@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib import patches, colors, cm
 from matplotlib.cm import ScalarMappable
-import einops as eo
 import scipy
 
 

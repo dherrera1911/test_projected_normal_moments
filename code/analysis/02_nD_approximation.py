@@ -15,12 +15,12 @@ import matplotlib.colors as mcolors
 import pandas as pd
 import os
 import sys
-sys.path.append('./code/')
+sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
 
 saveFig = True
-resultsDir = './results/nD_approximation/'
+resultsDir = '../../results/nD_approximation/'
 os.makedirs(resultsDir, exist_ok=True)
 
 # set seed
@@ -46,6 +46,7 @@ covErrRelType = {}
 #muErrRelType_E = {}
 #covErrRelType_E = {}
 
+start = time.time()
 for c in range(len(covTypeVec)):
     muErr = torch.zeros(len(varScaleVec), len(nDimList), nReps)
     covErr = torch.zeros(len(varScaleVec), len(nDimList), nReps)
@@ -61,8 +62,7 @@ for c in range(len(covTypeVec)):
         for v in range(len(varScaleVec)):
             varScale = varScaleVec[v] / torch.tensor(nDim/3.0)
             for i in range(nReps):
-                mu, covariance = sample_parameters(nDim, covType=covType,
-                                                   corrMagnitude=corrMagnitude)
+                mu, covariance = sample_parameters(nDim, covType=covType)
                 covariance = covariance * varScale
                 # Initialize the projected normal
                 prnorm = pn.ProjNorm(nDim=nDim, muInit=mu, covInit=covariance, requires_grad=False)
@@ -86,9 +86,9 @@ for c in range(len(covTypeVec)):
     #            covErrRel_E[v, i] = covErr_E[v, i] / covE.pow(2).sum() * 100
 
     # Save the error samples
-    np.save(plotDir + f'2_mu_error_{covType}.npy', muErr.numpy())
-    np.save(plotDir + f'2_cov_error_{covType}.npy', covErr.numpy())
-    np.save(plotDir + f'2_mu_error_rel_{covType}.npy', muErrRel.numpy())
-    np.save(plotDir + f'2_cov_error_rel_{covType}.npy', covErrRel.numpy())
+    np.save(plotDir + f'mu_error_{covType}.npy', muErr.numpy())
+    np.save(plotDir + f'cov_error_{covType}.npy', covErr.numpy())
+    np.save(plotDir + f'mu_error_rel_{covType}.npy', muErrRel.numpy())
+    np.save(plotDir + f'cov_error_rel_{covType}.npy', covErrRel.numpy())
 
-
+print(f'Time taken: {time.time() - start:.2f} seconds')

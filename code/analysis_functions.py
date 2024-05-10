@@ -1,11 +1,5 @@
 import torch
-import torch.nn as nn
-import torch.nn.utils.parametrize as parametrize
-import torch.distributions.multivariate_normal as mvn
 import numpy as np
-import einops as eo
-import scipy
-import qr_library as qr
 import geotorch
 
 

@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
 import sys
-sys.path.append('./code/')
+sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
 import time
 import copy
 
 saveFig = True
-resultsDir = './results/03_3d_moment_matching/'
+resultsDir = '../../results/03_3d_moment_matching/'
 os.makedirs(resultsDir, exist_ok=True)
 
 # set seed
@@ -49,6 +49,7 @@ lrGamma = 0.9
 nCycles = 2
 cycleMult = 0.2
 
+start = time.time()
 for c in range(len(covTypeVec)):
     # Arrays to save results
     covType = covTypeVec[c]
@@ -104,4 +105,5 @@ for c in range(len(covTypeVec)):
     np.save(resultsDir + f'covFit_{covType}.npy', covFit.numpy())
     np.save(resultsDir + f'lossArray_{covType}.npy', lossArray.numpy())
 
+print(f'Time taken: {time.time() - start:.2f} seconds')
 

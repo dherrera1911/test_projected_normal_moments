@@ -14,12 +14,12 @@ import matplotlib.colors as mcolors
 import pandas as pd
 import os
 import sys
-sys.path.append('./code/')
+sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
 
 saveFig = True
-resultsDir = './results/01_3d_approximation/'
+resultsDir = '../../results/01_3d_approximation/'
 os.makedirs(resultsDir, exist_ok=True)
 
 # set seed
@@ -36,16 +36,7 @@ covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
 nSamples = 10**6
 nReps = 500
 
-muErrType = {}
-covErrType = {}
-muErrRelType = {}
-covErrRelType = {}
-muErrType_E = {}
-covErrType_E = {}
-muErrRelType_E = {}
-covErrRelType_E = {}
-
-
+start = time.time()
 for c in range(len(covTypeVec)):
     covType = covTypeVec[c]
     muErr = torch.zeros(len(varScaleVec), nReps)
@@ -60,8 +51,7 @@ for c in range(len(covTypeVec)):
         varScale = varScaleVec[v]
         for i in range(nReps):
             # Plot a single example of projected normal and its approximation
-            mu, covariance = sample_parameters(nDim, covType=covType,
-                                               corrMagnitude=corrMagnitude)
+            mu, covariance = sample_parameters(nDim, covType=covType)
             covariance = covariance * varScale
             # Initialize the projected normal
             prnorm = pn.ProjNorm(nDim=nDim, muInit=mu, covInit=covariance, requires_grad=False)
@@ -88,4 +78,6 @@ for c in range(len(covTypeVec)):
     np.save(resultsDir + f'cov_error_{covType}.npy', covErr.numpy())
     np.save(resultsDir + f'mu_error_rel_{covType}.npy', muErrRel.numpy())
     np.save(resultsDir + f'cov_error_rel_{covType}.npy', covErrRel.numpy())
+
+print(f'Time taken: {time.time() - start:.2f} seconds')
 
