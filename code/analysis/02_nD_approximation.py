@@ -20,7 +20,7 @@ from analysis_functions import *
 from plotting_functions import *
 
 saveFig = True
-resultsDir = '../../results/nD_approximation/'
+resultsDir = '../../results/02_nD_approximation/'
 os.makedirs(resultsDir, exist_ok=True)
 
 # set seed
