@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import pandas as pd
 import os
+import time
 import sys
 sys.path.append('../')
 from analysis_functions import *

@@ -12,12 +12,11 @@ import projected_normal as pn
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
+import time
 import sys
 sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
-import time
-import copy
 
 saveFig = True
 resultsDir = '../../results/03_3d_moment_matching/'
