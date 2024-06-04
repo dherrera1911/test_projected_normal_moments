@@ -12,5 +12,5 @@
 # Initialize conda for the Bash shell
 #python ./01_3d_approximation.py
 #python ./02_nD_approximation.py
-python ./03_3d_moment_matching.py
+#python ./03_3d_moment_matching.py
 
