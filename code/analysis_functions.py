@@ -77,6 +77,7 @@ def make_random_correlation(eig):
 
 # Get statistics of errors across samples
 def error_stats(err):
+    err = torch.as_tensor(err)
     return {'mean': err.mean(dim=-1), 'median': err.median(dim=-1).values,
             'std': err.std(dim=-1), 'q1': err.quantile(0.25, dim=-1),
             'q3': err.quantile(0.75, dim=-1)}
