@@ -20,7 +20,7 @@ import time
 import copy
 
 saveFig = True
-resultsDir = '../../results/controls/02_3d_mm_training_test_params/'
+resultsDir = '../../results/controls/01_3d_mm_training_test_params/'
 os.makedirs(resultsDir, exist_ok=True)
 
 # set seed
@@ -32,7 +32,7 @@ nDim = 3
 # THE MOMENTS AT EACH ITERATION
 class ProjNormFit(pn.ProjNorm):
     def fit(self, muObs, covObs, nIter=100, lr=0.5, lrGamma=0.75,
-            nCycles=1, decayIter=20, lossType='norm',
+            nCycles=1, decayIter=20, lossType='norm', cycleMult=0.25,
             covWeight=1, optimizerType='SGD'):
         # Initialize loss function
         if lossType == 'norm':
@@ -51,7 +51,7 @@ class ProjNormFit(pn.ProjNorm):
             loss = lossFunc(gamma, psi, muObs, covObs)
             lossList = [loss.item()]
         for c in range(nCycles):
-            lrCycle = lr * 0.25**c # Decrease the initial learning rate
+            lrCycle = lr * cycleMult**c # Decrease the initial learning rate
             # Initialize the optimizer
             if optimizerType == 'SGD':
                 optimizer = torch.optim.SGD(self.parameters(), lr=lrCycle)
