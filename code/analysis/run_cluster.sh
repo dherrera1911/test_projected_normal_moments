@@ -10,7 +10,8 @@
 #SBATCH --qos=besteffort
 
 # Initialize conda for the Bash shell
-#python ./01_3d_approximation.py
-#python ./02_nD_approximation.py
-#python ./03_3d_moment_matching.py
+#python 01_moments_approximation.py par_approx_3d.yaml
+#python 01_moments_approximation.py par_approx_nd.yaml
+#python 02_moment_matching.py par_approx_3d.yaml
+#python 02_moment_matching.py par_approx_nd.yaml
 

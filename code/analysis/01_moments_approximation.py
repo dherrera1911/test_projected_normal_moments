@@ -13,18 +13,40 @@
 import torch
 import numpy as np
 import projected_normal as pn
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import pandas as pd
 import os
 import time
+import argparse
+import yaml
 import sys
 sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
 
-saveFig = True
-resultsDir = '../../results/02_nD_approximation/'
+# Uncomment block corresponding to how this is being run
+#### TO RUN FROM THE COMMAND LINE
+# Set up command-line argument parsing
+parser = argparse.ArgumentParser(description='Run analysis with specified configuration file.')
+parser.add_argument('config_path', type=str, help='Path to the configuration YAML file.')
+args = parser.parse_args()
+# Load the YAML file
+with open(args.config_path, 'r') as file:
+    config = yaml.safe_load(file)
+###
+
+### TO RUN INTERACTIVE
+#fileName = 'par_approx_3d.yaml'
+#config = yaml.safe_load(open(fileName, 'r'))
+###
+
+# Simulation parameters
+varScaleVec = config['SimulationParameters']['varScaleVec']
+covTypeVec = config['SimulationParameters']['covTypeVec']
+nSamples = config['SimulationParameters']['nSamples']
+nReps = config['SimulationParameters']['nReps']
+nDimVec = config['SimulationParameters']['nDimVec']
+
+# Create saving directory
+resultsDir = config['SavingDir']['resultsDir']
 os.makedirs(resultsDir, exist_ok=True)
 getEmpiricalError = False # If true, compute and save the empirical error, but takes longer
 
@@ -35,17 +57,10 @@ np.random.seed(1911)
 # GET APPROXIMATION ERRORS
 ##############
 
-# Parameters of simulation
-nDimList = [3, 5, 10, 25, 50, 100]
-varScaleVec = [0.0625, 0.25, 1.0, 4.0]
-covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
-nSamples = 10**6
-nReps = 200
-
 start = time.time()
 for c in range(len(covTypeVec)):
-    for n in range(len(nDimList)):
-        nDim = nDimList[n]
+    for n in range(len(nDimVec)):
+        nDim = nDimVec[n]
         covType = covTypeVec[c]
         gammaTrue = torch.zeros(len(varScaleVec), nDim, nReps)
         gammaTaylor = torch.zeros(len(varScaleVec), nDim, nReps)
