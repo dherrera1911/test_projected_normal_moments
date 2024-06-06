@@ -20,13 +20,13 @@ import time
 import copy
 
 saveFig = True
-resultsDir = '../../results/controls/03_3d_mm_training/'
+resultsDir = '../../results/controls/04_nd_mm_training/'
 os.makedirs(resultsDir, exist_ok=True)
 
 # set seed
 np.random.seed(1911)
 # Parameters of simulation
-nDim = 3
+nDim = 25
 
 # CREATE A NEW CLASS WHERE THE FITTING SAVES AND RETURNS
 # THE MOMENTS AT EACH ITERATION
@@ -69,8 +69,8 @@ class ProjNormFit(pn.ProjNorm):
             for i in range(nIter):
                 # Zero the gradients
                 optimizer.zero_grad()
-                muOut, covOut = self.get_moments()
-                loss = lossFunc(muOut, covOut*5, muObs, covObs*5)
+                gamma, psi = self.get_moments()
+                loss = lossFunc(gamma, psi*5, muObs, covObs*5)
                 # Compute the gradients
                 loss.backward()
                 # Optimize the parameters
@@ -98,7 +98,7 @@ class ProjNormFit(pn.ProjNorm):
 ##############
 
 # Parameters of simulation
-varScale = 0.5
+varScale = 0.25
 nSamples = 100000
 covType = 'correlated'
 nReps = 30
@@ -107,11 +107,11 @@ nReps = 30
 nIter = 300
 lossType = 'mse'
 dtype = torch.float32
-lr = 0.3
+lr = 0.2
 optimizerType = 'NAdam'
 decayIter = 10
 lrGamma = 0.9
-nCycles = 4
+nCycles = 6
 
 # Initialize lists for storing results
 gammaTrueArr = torch.zeros(nDim, nReps)
@@ -133,7 +133,8 @@ start = time.time()
 for r in range(nReps):
     # Get parameters
     mu, cov = sample_parameters(nDim, covType=covType)
-    cov = cov * varScale
+    varScaleAdjusted = varScale / torch.tensor(nDim/3.0)
+    cov = cov * varScaleAdjusted
     # Initialize the projected normal with the true parameters
     prnorm = pn.ProjNorm(nDim=nDim, muInit=mu, covInit=cov,
                          requires_grad=False, dtype=dtype)
@@ -173,20 +174,20 @@ for r in range(nReps):
     lossOracleArr[:, r] = lossOrac
 
 
-np.save(resultsDir + f'gammaTrue_{covType}_{lossType}.npy', gammaTrueArr.numpy())
-np.save(resultsDir + f'gammaFit_{covType}_{lossType}.npy', gammaFitArr.numpy())
-np.save(resultsDir + f'gammaOracle_{covType}_{lossType}.npy', gammaOracleArr.numpy())
-np.save(resultsDir + f'psiTrue_{covType}_{lossType}.npy', psiTrueArr.numpy())
-np.save(resultsDir + f'psiFit_{covType}_{lossType}.npy', psiFitArr.numpy())
-np.save(resultsDir + f'psiOracle_{covType}_{lossType}.npy', psiOracleArr.numpy())
-np.save(resultsDir + f'muTrue_{covType}_{lossType}.npy', muTrueArr.numpy())
-np.save(resultsDir + f'muFit_{covType}_{lossType}.npy', muFitArr.numpy())
-np.save(resultsDir + f'muOracle_{covType}_{lossType}.npy', muOracleArr.numpy())
-np.save(resultsDir + f'covTrue_{covType}_{lossType}.npy', covTrueArr.numpy())
-np.save(resultsDir + f'covFit_{covType}_{lossType}.npy', covFitArr.numpy())
-np.save(resultsDir + f'covOracle_{covType}_{lossType}.npy', covOracleArr.numpy())
-np.save(resultsDir + f'lossFit_{covType}_{lossType}.npy', lossFitArr.numpy())
-np.save(resultsDir + f'lossOracle_{covType}_{lossType}.npy', lossOracleArr.numpy())
+np.save(resultsDir + f'gammaTrue_{covType}_n_{nDim}_{lossType}.npy', gammaTrueArr.numpy())
+np.save(resultsDir + f'gammaFit_{covType}_n_{nDim}_{lossType}.npy', gammaFitArr.numpy())
+np.save(resultsDir + f'gammaOracle_{covType}_n_{nDim}_{lossType}.npy', gammaOracleArr.numpy())
+np.save(resultsDir + f'psiTrue_{covType}_n_{nDim}_{lossType}.npy', psiTrueArr.numpy())
+np.save(resultsDir + f'psiFit_{covType}_n_{nDim}_{lossType}.npy', psiFitArr.numpy())
+np.save(resultsDir + f'psiOracle_{covType}_n_{nDim}_{lossType}.npy', psiOracleArr.numpy())
+np.save(resultsDir + f'muTrue_{covType}_n_{nDim}_{lossType}.npy', muTrueArr.numpy())
+np.save(resultsDir + f'muFit_{covType}_n_{nDim}_{lossType}.npy', muFitArr.numpy())
+np.save(resultsDir + f'muOracle_{covType}_n_{nDim}_{lossType}.npy', muOracleArr.numpy())
+np.save(resultsDir + f'covTrue_{covType}_n_{nDim}_{lossType}.npy', covTrueArr.numpy())
+np.save(resultsDir + f'covFit_{covType}_n_{nDim}_{lossType}.npy', covFitArr.numpy())
+np.save(resultsDir + f'covOracle_{covType}_n_{nDim}_{lossType}.npy', covOracleArr.numpy())
+np.save(resultsDir + f'lossFit_{covType}_n_{nDim}_{lossType}.npy', lossFitArr.numpy())
+np.save(resultsDir + f'lossOracle_{covType}_n_{nDim}_{lossType}.npy', lossOracleArr.numpy())
 
 print(f'Time taken: {time.time() - start:.2f} seconds')
 
