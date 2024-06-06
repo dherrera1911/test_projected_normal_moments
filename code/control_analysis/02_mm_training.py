@@ -9,30 +9,67 @@
 import torch
 import numpy as np
 import projected_normal as pn
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import os
+import time
+import argparse
+import yaml
 import sys
 sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
-import time
-import copy
 
+# Uncomment block corresponding to how this is being run
+#### TO RUN FROM THE COMMAND LINE
+# Set up command-line argument parsing
+parser = argparse.ArgumentParser(description='Run analysis with specified configuration file.')
+parser.add_argument('config_path', type=str, help='Path to the configuration YAML file.')
+args = parser.parse_args()
+# Load the YAML file
+with open(args.config_path, 'r') as file:
+    config = yaml.safe_load(file)
+###
+
+### TO RUN INTERACTIVE
+#fileName = 'par_test_params_3d.yaml'
+#config = yaml.safe_load(open(fileName, 'r'))
+###
+
+
+### LOAD PARAMETERS
+# Simulation parameters
+varScale = config['SimulationParameters']['varScale']
+covType = config['SimulationParameters']['covType']
+nSamples = config['SimulationParameters']['nSamples']
+nReps = config['SimulationParameters']['nReps']
+nDim = config['SimulationParameters']['nDim']
+
+# Fitting parameters
+nIter = config['FittingParameters']['nIter']
+lr = config['FittingParameters']['lr']
+optimizerType = config['FittingParameters']['optimizerType']
+decayIter = config['FittingParameters']['decayIter']
+lrGamma = config['FittingParameters']['lrGamma']
+nCycles = config['FittingParameters']['nCycles']
+cycleMult = config['FittingParameters']['cycleMult']
+covWeight = config['FittingParameters']['covWeight']
+lossType = config['FittingParameters']['lossType']
+
+# Results saving directory
+resultsDir = config['SavingDir']['resultsDir']
 saveFig = True
-resultsDir = '../../results/controls/04_nd_mm_training/'
 os.makedirs(resultsDir, exist_ok=True)
-
 # set seed
 np.random.seed(1911)
-# Parameters of simulation
-nDim = 25
+# set model dtype
+dtype = torch.float32
+
 
 # CREATE A NEW CLASS WHERE THE FITTING SAVES AND RETURNS
 # THE MOMENTS AT EACH ITERATION
 class ProjNormFit(pn.ProjNorm):
     def fit(self, muObs, covObs, nIter=100, lr=0.5, lrGamma=0.75,
-            nCycles=1, decayIter=20, lossType='norm', optimizerType='SGD'):
+            nCycles=1, decayIter=20, lossType='norm',
+            cycleMult=0.25, optimizerType='SGD'):
         # Initialize loss function
         if lossType == 'norm':
             lossFunc = pn.loss_norm
@@ -50,7 +87,7 @@ class ProjNormFit(pn.ProjNorm):
             loss = lossFunc(gamma, psi, muObs, covObs)
             lossList = [loss.item()]
         for c in range(nCycles):
-            lrCycle = lr * 0.25**c # Decrease the initial learning rate
+            lrCycle = lr * cycleMult**c # Decrease the initial learning rate
             # Initialize the optimizer
             if optimizerType == 'SGD':
                 optimizer = torch.optim.SGD(self.parameters(), lr=lrCycle)
@@ -97,22 +134,6 @@ class ProjNormFit(pn.ProjNorm):
 # FIT THROUGH MOMENT MATCHING WITH DIFFERENT INITIALIZATIONS
 ##############
 
-# Parameters of simulation
-varScale = 0.25
-nSamples = 100000
-covType = 'correlated'
-nReps = 30
-
-# Parameters of fitting
-nIter = 300
-lossType = 'mse'
-dtype = torch.float32
-lr = 0.2
-optimizerType = 'NAdam'
-decayIter = 10
-lrGamma = 0.9
-nCycles = 6
-
 # Initialize lists for storing results
 gammaTrueArr = torch.zeros(nDim, nReps)
 gammaFitArr = torch.zeros(nDim, nIter*nCycles+1, nReps)
@@ -131,6 +152,7 @@ lossOracleArr = torch.zeros(nIter*nCycles+1, nReps)
 
 start = time.time()
 for r in range(nReps):
+    print(f'Iteration {r+1}/{nReps}')
     # Get parameters
     mu, cov = sample_parameters(nDim, covType=covType)
     varScaleAdjusted = varScale / torch.tensor(nDim/3.0)

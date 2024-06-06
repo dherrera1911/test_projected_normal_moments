@@ -1,17 +1,17 @@
 SavingDir:
-  resultsDir: '../../results/03_3d_moment_matching/'
+  resultsDir: '../../results/03_nd_mm_training_test_params/'
 
 SimulationParameters:
   # Number of dimensions
-  nDimVec: [3]
-  # variance scales to simulate
-  varScaleVec: [0.0625, 0.125, 0.25, 0.5, 1.0]
-  # types of covariance structure to simulate
-  covTypeVec: ['uncorrelated', 'correlated', 'symmetric']
+  nDim: 25
+  # variance scale to simulate
+  varScale: 0.25
+  # type of covariance structure to simulate
+  covType: 'uncorrelated'
   # number of samples for empirical estimates
   nSamples: 1000000
   # Number of simualted distributions to fit for each parameter combination
-  nReps: 100
+  nReps: 20
 
 FittingParameters:
   # Number of iterations of each fitting cycle
@@ -19,7 +19,7 @@ FittingParameters:
   # Number of cycles of fitting
   nCycles: 6
   # Learning rate
-  lr: 0.2
+  lr: 0.3
   # lr decay parameters
   decayIter: 10
   lrGamma: 0.85
@@ -27,5 +27,5 @@ FittingParameters:
   cycleMult: 0.5
   # Optimizer and loss function
   optimizerType: 'NAdam'
-  lossType: 'norm'
-  covWeight: 3
+  lossTypeVec: ['mse', 'norm']
+  covWeightVec: [1, 3]

@@ -68,10 +68,8 @@ dtype = torch.float32
 
 start = time.time()
 for c in range(len(covTypeVec)):
-    print('Covariance type:', covTypeVec[c])
     for n in range(len(nDimVec)):
         nDim = nDimVec[n]
-        print('Dimension:', nDim)
         # Arrays to save results
         covType = covTypeVec[c]
         gammaTrue = torch.zeros(len(varScaleVec), nDim, nReps)
@@ -86,10 +84,10 @@ for c in range(len(covTypeVec)):
         covFit = torch.zeros(len(varScaleVec), nDim, nDim, nReps)
         lossArray = torch.zeros(len(varScaleVec), nIter*nCycles, nReps)
         for v in range(len(varScaleVec)):
-            print('Variance scale:', varScaleVec[v])
             varScale = varScaleVec[v] / torch.tensor(nDim/3.0)
             for r in range(nReps):
-                print('Rep:', r)
+                progressStr = f'covType = {covType}, nDim = {nDim}, varScale = {varScale}, rep = {r}'
+                print(progressStr)
                 # Get parameters
                 muTrue[v,:,r], covTrue[v,:,:,r] = sample_parameters(nDim, covType=covType)
                 covTrue[v,:,:,r] = covTrue[v,:,:,r] * varScale

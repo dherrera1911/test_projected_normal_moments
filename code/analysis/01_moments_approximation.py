@@ -75,6 +75,8 @@ for c in range(len(covTypeVec)):
         for v in range(len(varScaleVec)):
             varScale = varScaleVec[v] / torch.tensor(nDim/3.0)
             for r in range(nReps):
+                progressStr = f'covType = {covType}, nDim = {nDim}, varScale = {varScale}, rep = {r}'
+                print(progressStr)
                 # Get parameters
                 mu[v,:,r], cov[v,:,:,r] = sample_parameters(nDim, covType=covType)
                 cov[v,:,:,r] = cov[v,:,:,r] * varScale
