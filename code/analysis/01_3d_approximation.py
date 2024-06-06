@@ -40,7 +40,7 @@ nDim = 3
 varScaleVec = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
 covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
 nSamples = 10**6
-nReps = 500
+nReps = 200
 
 start = time.time()
 for c in range(len(covTypeVec)):

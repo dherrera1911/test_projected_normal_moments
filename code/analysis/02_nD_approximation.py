@@ -40,17 +40,7 @@ nDimList = [3, 5, 10, 25, 50, 100]
 varScaleVec = [0.0625, 0.25, 1.0, 4.0]
 covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
 nSamples = 10**6
-nReps = 500
-
-muErrType = {}
-covErrType = {}
-muErrRelType = {}
-covErrRelType = {}
-if getEmpiricalError:
-    muErrType_E = {}
-    covErrType_E = {}
-    muErrRelType_E = {}
-    covErrRelType_E = {}
+nReps = 200
 
 start = time.time()
 for c in range(len(covTypeVec)):
