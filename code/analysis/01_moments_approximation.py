@@ -10,21 +10,18 @@
 #
 ##################
 
-import torch
-import numpy as np
-import projected_normal as pn
 import os
 import time
 import argparse
-import yaml
 import sys
+import torch
+from projected_normal.prnorm_class import ProjectedNormal
+import yaml
 
 sys.path.append("../")
-from analysis_functions import *
-from plotting_functions import *
+from analysis_functions import sample_parameters, list_2d
 
-# Uncomment block corresponding to how this is being run
-#### TO RUN FROM THE COMMAND LINE
+# TO RUN FROM THE COMMAND LINE, UNCOMMENT THE FOLLOWING LINES
 # Set up command-line argument parsing
 parser = argparse.ArgumentParser(
     description="Run analysis with specified configuration file."
@@ -38,89 +35,87 @@ with open(args.config_path, "r") as file:
     config = yaml.safe_load(file)
 ###
 
-### TO RUN INTERACTIVE
-# fileName = 'par_approx_3d.yaml'
-# config = yaml.safe_load(open(fileName, 'r'))
+### TO RUN INTERACTIVE, UNCOMMENT THE FOLLOWING LINES
+#fileName = './parameters/par_approx_3d.yaml'
+#config = yaml.safe_load(open(fileName, 'r'))
 ###
 
 # Simulation parameters
-varScaleVec = config["SimulationParameters"]["varScaleVec"]
-covTypeVec = config["SimulationParameters"]["covTypeVec"]
-nSamples = config["SimulationParameters"]["nSamples"]
-nReps = config["SimulationParameters"]["nReps"]
-nDimVec = config["SimulationParameters"]["nDimVec"]
+sigma_list = config["simulation_parameters"]["sigma_list"]
+cov_type_list = config["simulation_parameters"]["cov_type_list"]
+empirical_samples = config["simulation_parameters"]["empirical_samples"]
+n_simulations = config["simulation_parameters"]["n_simulations"]
+n_dim_list = config["simulation_parameters"]["n_dim_list"]
 
 # Create saving directory
-resultsDir = config["SavingDir"]["resultsDir"]
-os.makedirs(resultsDir, exist_ok=True)
-getEmpiricalError = (
-    False  # If true, compute and save the empirical error, but takes longer
-)
-
-# set seed
-np.random.seed(1911)
+results_dir = config["saving_dir"]["results_dir"]
+os.makedirs(results_dir, exist_ok=True)
 
 ##############
 # GET APPROXIMATION ERRORS
 ##############
 
 start = time.time()
-for c, covType in enumerate(covTypeVec):
+for c, covariance_type in enumerate(cov_type_list):
     # loop over covariance types
-    for n, nDim in enumerate(nDimVec):
+    for n, n_dim in enumerate(n_dim_list):
         # loop over dimensions
 
-        # Initialize the tensors to store the moments
-        gammaTrue = torch.zeros(len(varScaleVec), nDim, nReps)
-        gammaTaylor = torch.zeros(len(varScaleVec), nDim, nReps)
-        psiTrue = torch.zeros(len(varScaleVec), nDim, nDim, nReps)
-        psiTaylor = torch.zeros(len(varScaleVec), nDim, nDim, nReps)
-        mu = torch.zeros(len(varScaleVec), nDim, nReps)
-        cov = torch.zeros(len(varScaleVec), nDim, nDim, nReps)
-        if getEmpiricalError:
-            gammaTrue2 = torch.zeros(len(varScaleVec), nDim, nReps)
-            psiTrue2 = torch.zeros(len(varScaleVec), nDim, nDim, nReps)
+        n_scales = len(sigma_list)
+        # Initialize the dictionary with nested lists to save the moments
+        results = {
+            "gamma_true": list_2d(n_scales, n_simulations),
+            "gamma_taylor": list_2d(n_scales, n_simulations),
+            "psi_true": list_2d(n_scales, n_simulations),
+            "psi_taylor": list_2d(n_scales, n_simulations),
+            "sm_true": list_2d(n_scales, n_simulations),
+            "sm_taylor": list_2d(n_scales, n_simulations),
+            "mu": list_2d(n_scales, n_simulations),
+            "covariance": list_2d(n_scales, n_simulations),
+            "scales": sigma_list,
+        }
 
-        for v, varScaleUn in enumerate(varScaleVec):
+        for v, sigma_scale in enumerate(sigma_list):
             # loop over variance scales
-            varScale = varScaleUn / torch.tensor(nDim / 3.0)
+            var_scale = sigma_scale / torch.tensor(n_dim / 3.0)
 
-            for r in range(nReps):
-                progressStr = f"covType = {covType}, nDim = {nDim}, varScale = {varScale}, rep = {r}"
-                print(progressStr)
+            for r in range(n_simulations):
+                progress_str = f"covariance_type: {covariance_type}, " \
+                  f"n_dim: {n_dim}, var_scale: {var_scale}, rep: {r}"
+                print(progress_str)
+
                 # Get parameters
-                mu[v, :, r], cov[v, :, :, r] = sample_parameters(nDim, covType=covType)
-                cov[v, :, :, r] = cov[v, :, :, r] * varScale
+                results['mu'][v][r], results['covariance'][v][r] = sample_parameters(
+                    n_dim=n_dim, covariance_type=covariance_type
+                )
+                results['covariance'][v][r] = results['covariance'][v][r] * var_scale
+
                 # Initialize the projected normal
-                prnorm = pn.ProjNorm(
-                    nDim=nDim,
-                    muInit=mu[v, :, r],
-                    covInit=cov[v, :, :, r],
+                prnorm = ProjectedNormal(
+                    n_dim=n_dim,
+                    mu=results['mu'][v][r],
+                    covariance=results['covariance'][v][r],
                     requires_grad=False,
                 )
-                # Get empirical moment estimates
-                gammaTrue[v, :, r], psiTrue[v, :, :, r] = prnorm.empirical_moments(
-                    nSamples=nSamples
-                )
-                # Get the Taylor approximation moments
-                gammaTaylor[v, :, r], psiTaylor[v, :, :, r] = prnorm.get_moments()
-                if getEmpiricalError:
-                    # Compute second empirical estimate
-                    gammaTrue2[v, :, r], psiTrue2[v, :, r] = prnorm.empirical_moments(
-                        nSamples=nSamples
-                    )
 
-        # Save the moments
-        np.save(resultsDir + f"gammaTrue_{covType}_n_{nDim}.npy", gammaTrue.numpy())
-        np.save(resultsDir + f"gammaTaylor_{covType}_n_{nDim}.npy", gammaTaylor.numpy())
-        np.save(resultsDir + f"psiTrue_{covType}_n_{nDim}.npy", psiTrue.numpy())
-        np.save(resultsDir + f"psiTaylor_{covType}_n_{nDim}.npy", psiTaylor.numpy())
-        np.save(resultsDir + f"mu_{covType}_n_{nDim}.npy", mu.numpy())
-        np.save(resultsDir + f"cov_{covType}_n_{nDim}.npy", cov.numpy())
-        if getEmpiricalError:
-            np.save(
-                resultsDir + f"gammaTrue2_{covType}_n_{nDim}.npy", gammaTrue2.numpy()
-            )
-            np.save(resultsDir + f"psiTrue2_{covType}_n_{nDim}.npy", psiTrue2.numpy())
+                # Get empirical moment estimates and unpack
+                empirical_moments = prnorm.moments_empirical(
+                    n_samples=empirical_samples
+                )
+                results['gamma_true'][v][r] = empirical_moments['gamma']
+                results['psi_true'][v][r] = empirical_moments['psi']
+                results['sm_true'][v][r] = empirical_moments['second_moment']
+
+                # Get the Taylor approximation moments and unpack
+                taylor_moments = prnorm.moments_approx()
+                results['gamma_taylor'][v][r] = taylor_moments['gamma']
+                results['psi_taylor'][v][r] = taylor_moments['psi']
+                results['sm_taylor'][v][r] = taylor_moments['second_moment']
+
+        #### CHANGE SAVING SO TO SAVE THE SINGLE DICTIONARY
+        torch.save(
+            results,
+            results_dir + f"results_{covariance_type}_n_{n_dim}.pt",
+        )
 
 print(f"Time taken: {time.time() - start:.2f} seconds")
