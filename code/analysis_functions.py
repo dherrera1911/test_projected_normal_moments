@@ -4,31 +4,31 @@ import geotorch
 import scipy
 
 
-def sample_parameters(nDim, covType='uncorrelated', corrMagnitude=1):
+def sample_parameters(n_dim, covariance_type='uncorrelated', correlation_magnitude=1):
     # Sample a random mean in the unit sphere
-    mu = torch.randn(nDim) # Random mean
+    mu = torch.randn(n_dim) # Random mean
     mu = mu / torch.norm(mu) # Project to the unit sphere
-    if covType == 'isotropic':
-        covariance = torch.eye(nDim)
-    elif covType == 'uncorrelated':
-        var = torch.rand(nDim) * 0.45 + 0.05
+    if covariance_type == 'isotropic':
+        covariance = torch.eye(n_dim)
+    elif covariance_type == 'uncorrelated':
+        var = torch.rand(n_dim) * 0.45 + 0.05
         covariance = torch.diag(var)
-    elif covType == 'correlated':
-        #eig = np.exp(np.linspace(start=-0.5, stop=0.5, num=nDim))
-        #eig = np.exp(np.linspace(start=-0.5*np.sqrt((nDim/3)),
-        #                         stop=0.5*np.sqrt((nDim/3)), num=nDim))
-        eig = np.exp(np.linspace(start=-0.5*np.sqrt(nDim),
-                                 stop=0.5*np.sqrt(nDim), num=nDim))
-        correlation = make_random_correlation(eig) * corrMagnitude + \
-            torch.eye(nDim) * (1 - corrMagnitude)
-        var = torch.rand(nDim) * 0.45 + 0.05
+    elif covariance_type == 'correlated':
+        #eig = np.exp(np.linspace(start=-0.5, stop=0.5, num=n_dim))
+        #eig = np.exp(np.linspace(start=-0.5*np.sqrt((n_dim/3)),
+        #                         stop=0.5*np.sqrt((n_dim/3)), num=n_dim))
+        eig = np.exp(np.linspace(start=-0.5*np.sqrt(n_dim),
+                                 stop=0.5*np.sqrt(n_dim), num=n_dim))
+        correlation = make_random_correlation(eig) * correlation_magnitude + \
+            torch.eye(n_dim) * (1 - correlation_magnitude)
+        var = torch.rand(n_dim) * 0.45 + 0.05
         covariance = corr_2_cov(corr=correlation, variances=var)
-    elif covType == 'symmetric':
+    elif covariance_type == 'symmetric':
         # Generate random orthogonal matrix
-        soGroup = geotorch.SO(size=(nDim,nDim))
+        soGroup = geotorch.SO(size=(n_dim,n_dim))
         orthogonal = soGroup.sample()
         # Generate random diagonal matrix with 
-        eig = torch.rand(nDim) * 0.45 + 0.05
+        eig = torch.rand(n_dim) * 0.45 + 0.05
         # Generate covariance matrix
         covariance = torch.einsum('ij,j,jk->ik', orthogonal, eig, orthogonal.t())
         # Take as mu the first eigenvector
@@ -82,4 +82,6 @@ def error_stats(err):
             'std': err.std(dim=-1), 'q1': err.quantile(0.25, dim=-1),
             'q3': err.quantile(0.75, dim=-1)}
 
+def list_2d(n1, n2):
+    return [[None for _ in range(n1)] for _ in range(n2)]
 
