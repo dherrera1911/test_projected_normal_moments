@@ -12,7 +12,7 @@ simulation_parameters:
   # number of samples for empirical estimates
   empirical_samples: 1000000
   # Number of simualted distributions to fit for each parameter combination
-  n_simulations: 50
+  n_simulations: 40
 
 fitting_parameters:
   # Number of iterations of each fitting cycle
