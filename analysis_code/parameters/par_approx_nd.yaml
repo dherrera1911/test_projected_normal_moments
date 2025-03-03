@@ -5,7 +5,7 @@ simulation_parameters:
   # Number of dimensions
   n_dim_list: [3, 6, 12, 24, 48]
   # variance scales to simulate
-  sigma_list: [0.125, 0.25, 0.5, 1.0, 2.0, 4.0]
+  sigma_list: [0.125, 0.25, 0.5, 1.0, 2.0]
   # types of covariance structure to simulate
   # types of covariance structure to simulate
   eigval_list: ['uniform']
