@@ -1,0 +1,12 @@
+name: projnormal
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python>=3.9
+  - matplotlib
+  - pip
+  - pip:
+    - pyyaml
+    - git+https://github.com/dherrera1911/projnormal.git

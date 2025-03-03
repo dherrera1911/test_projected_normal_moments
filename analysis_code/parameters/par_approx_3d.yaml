@@ -1,0 +1,15 @@
+saving_dir:
+  results_dir: '../results/model_outputs/01_3d_approximation/'
+
+simulation_parameters:
+  # Number of dimensions
+  n_dim_list: [3]
+  # variance scales to simulate
+  sigma_list: [0.125, 0.25, 0.5, 1.0, 2.0, 4.0]
+  # types of covariance structure to simulate
+  eigval_list: ['uniform']
+  eigvec_list: ['random']
+  # number of samples for empirical estimates
+  empirical_samples: 500000
+  # Number of simualted distributions to fit for each parameter combination
+  n_simulations: 100

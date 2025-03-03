@@ -18,30 +18,28 @@ sys.path.append('../')
 from analysis_functions import *
 from plotting_functions import *
 
-saveFig = True
+# Directories to save plots and load data
 plotDir = '../../plots/01_3d_approximation_performance/'
 os.makedirs(plotDir, exist_ok=True)
-
-# set seed
-np.random.seed(1911)
-nDim = 3
-
-# Directory with results of the simulations
 dataDir = '../../results/01_3d_approximation/'
+
+# PARAMETERS OF SIMULATIONS TO LOAD
+# Covariance types and variance scales
+covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
+varScaleVec = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8]
 
 ##############
 # 1) LOAD THE SIMULATION RESULTS
 ##############
 
-covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
-# variances used in the simulation. varScaleVec length matches first dim
-varScaleVec = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8]
+# Dictionaries to load the results
 gammaTrue = {}
 gammaTaylor = {}
 psiTrue = {}
 psiTaylor = {}
 mu = {}
 cov = {}
+
 for c in range(len(covTypeVec)):
     covType = covTypeVec[c]
     gammaTrue[covType] = np.load(dataDir + f'gammaTrue_{covType}.npy')
@@ -50,6 +48,7 @@ for c in range(len(covTypeVec)):
     psiTaylor[covType] = np.load(dataDir + f'psiTaylor_{covType}.npy')
     mu[covType] = np.load(dataDir + f'mu_{covType}.npy')
     cov[covType] = np.load(dataDir + f'cov_{covType}.npy')
+nDim = gammaTrue[covTypeVec[0]].shape[1]
 
 
 ##############
@@ -63,9 +62,11 @@ nSamples = 200
 
 for c in range(len(covTypeVec)):
     covType = covTypeVec[c]
+
     for v in range(len(varScaleVec)):
+        varScale = varScaleVec[v]
+
         for e in range(nExamples):
-            varScale = varScaleVec[v]
             # Initialize the projected normal
             prnorm = pn.ProjNorm(nDim=nDim, muInit=mu[covType][v,:,e],
                                  covInit=cov[covType][v,:,:,e],
@@ -78,8 +79,11 @@ for c in range(len(covTypeVec)):
             gammaAppPlt = gammaTaylor[covType][v,:,e]
             psiTruePlt = psiTrue[covType][v,:,:,e]
             psiAppPlt = psiTaylor[covType][v,:,:,e]
+            # Compute errors
+            gammaErr = la.norm(gammaTruePlt - gammaAppPlt) / la.norm(gammaTruePlt) * 100
+            psiErr = la.norm(psiTruePlt - psiAppPlt) / la.norm(psiTruePlt) * 100
 
-            # Plot ellipses
+            # PLOT ELLIPSES
             plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
             fig, ax = plt.subplots(2, 2, figsize=(3.5, 3.5))
             plot_ellipses_grid(axes=ax, mu=torch.zeros(nDim), cov=torch.eye(nDim)/4,
@@ -96,18 +100,13 @@ for c in range(len(covTypeVec)):
             set_grid_limits(axes=ax, xlims=[-1.5, 1.5], ylims=[-1.5, 1.5])
             add_grid_labels(axes=ax, prefix=r'$y$')
             # Print error value in ax[0,1]
-            gammaErr = la.norm(gammaTruePlt - gammaAppPlt) / la.norm(gammaTruePlt) * 100
-            psiErr = la.norm(psiTruePlt - psiAppPlt) / la.norm(psiTruePlt) * 100
             ax[0,1].text(0.5, 0.5, r'$\mathrm{Error}_{\gamma}$:' f' {gammaErr:.2f}%\n'
                                    r'$\mathrm{Error}_{\Psi}$:' f' {psiErr:.2f}%',
                           horizontalalignment='center', verticalalignment='center')
             plt.tight_layout()
-            if saveFig:
-                plt.savefig(plotDir + f'1_approximation_ellipses_var_{covType}_'\
-                    f'var{int(varScale*100)}_{e}.png', bbox_inches='tight')
-                plt.close()
-            else:
-                plt.show()
+            plt.savefig(plotDir + f'1_approximation_ellipses_var_{covType}_'\
+                f'var{int(varScale*100)}_{e}.png', bbox_inches='tight')
+            plt.close()
 
 
 ##############
@@ -158,12 +157,9 @@ for c in range(len(covTypeVec)):
             ax[1,v].set_ylabel('Count')
         plt.tight_layout()
 
-        if saveFig:
             plt.savefig(plotDir + f'2_approximation_error_{covType}_{title}.png',
                         bbox_inches='tight')
             plt.close()
-        else:
-            plt.show()
 
 
 ##############
@@ -206,11 +202,8 @@ for e in range(len(errStats)):
     ax.legend(loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.25),
               fontsize='small')
     plt.tight_layout()
-    if saveFig:
-        plt.savefig(plotDir + f'3_{errName[e]}_vs_var_scale.png',
-                    bbox_inches='tight')
-        plt.close()
-    else:
-        plt.show()
+    plt.savefig(plotDir + f'3_{errName[e]}_vs_var_scale.png',
+                bbox_inches='tight')
+    plt.close()
 
 

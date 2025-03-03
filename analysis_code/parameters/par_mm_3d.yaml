@@ -1,0 +1,29 @@
+saving_dir:
+  results_dir: '../results/model_outputs/03_3d_moment_matching/'
+
+simulation_parameters:
+  # Number of dimensions
+  n_dim_list: [3]
+  # variance scales to simulate
+  sigma_list: [0.125, 0.25, 0.5, 1.0, 2.0, 4.0]
+  # types of covariance structure to simulate
+  eigval_list: ['uniform']
+  eigvec_list: ['random']
+  # number of samples for empirical estimates
+  empirical_samples: 500000
+  # Number of simualted distributions to fit for each parameter combination
+  n_simulations: 100
+
+fitting_parameters:
+  # Number of maximum iterations of each fitting cycle
+  n_iter: 100
+  # Learning rate
+  lr: 0.2
+  # scheduler parameters
+  lr_decay_period: 10
+  lr_gamma: 0.85
+  # cycle parameters
+  n_cycles: 5
+  lr_gamma_cycle: 0.5
+  # Optimizer and loss function
+  loss_type: 'norm'
