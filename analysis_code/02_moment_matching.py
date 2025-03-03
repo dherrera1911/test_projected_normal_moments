@@ -11,9 +11,9 @@ import itertools
 
 import torch
 import yaml
-import projected_normal.distribution.general as png
-from projected_normal.models import ProjectedNormal
-from projected_normal import param_sampling
+import projnormal.distribution.general as png
+from projnormal.models import ProjectedNormal
+from projnormal import param_sampling
 
 # Set the data type
 DTYPE = torch.float32
