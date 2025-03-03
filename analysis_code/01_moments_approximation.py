@@ -17,7 +17,7 @@ from projnormal import param_sampling
 
 # Load configuration file
 run_mode = 'script'
-# run_mode = 'script'
+#run_mode = 'interactive'
 if run_mode == 'interactive':
     file_name = './parameters/par_approx_3d.yaml'
     config = yaml.safe_load(open(file_name, 'r'))
