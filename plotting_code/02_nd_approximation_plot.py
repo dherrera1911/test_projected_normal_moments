@@ -1,232 +1,268 @@
-##################
-#
-# For the 3D case, we will test the approximation of the moments of a
-# projected normal distribution.
-#
-##################
-
-import torch
-import numpy as np
-import numpy.linalg as la
-import projected_normal as pn
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import pandas as pd
+"""
+Plot the taylor approximation to the moments of the n-dimensional projected normal.
+"""
 import os
 import sys
-sys.path.append('../')
-from analysis_functions import *
-from plotting_functions import *
+import torch
+import numpy as np
+import projnormal as pn
+import matplotlib.pyplot as plt
 
-# Directories to save plots and load data
-plotDir = '../../plots/02_nd_approximation_performance/'
-os.makedirs(plotDir, exist_ok=True)
-dataDir = '../../results/02_nd_approximation/'
+from plotting_functions import (
+  plot_means,
+  draw_covariance_images,
+  add_colorbar
+)
 
-# PARAMETERS OF SIMULATION (data to load)
-# Covariance types, numbers of dimensions and variances
-covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
-nDimList = [3, 5, 10, 25, 50, 100]
-varScaleVec = [0.0625, 0.25, 1, 4]
+# Extract the results
+def list_2_tensor(tensor_list):
+    return torch.stack([torch.stack(tensor_list[i]) for i in range(len(tensor_list))])
 
-##############
-# 1) LOAD THE SIMULATION RESULTS
-##############
+def error_rel(x, y):
+    if x.dim()==3:
+        error = 2 * torch.norm(x - y, dim=2) \
+            / (torch.norm(x, dim=2) + torch.norm(y, dim=2))
+    elif x.dim()==4:
+        error = 2 * torch.norm(x - y, dim=(2,3)) \
+            / (torch.norm(x, dim=(2,3)) + torch.norm(y, dim=(2,3)))
+    return error * 100
 
-# Dictionaries to load the results
-gammaTrue = {key:{} for key in covTypeVec}
-gammaTaylor = {key:{} for key in covTypeVec}
-psiTrue = {key:{} for key in covTypeVec}
-psiTaylor = {key:{} for key in covTypeVec}
-mu = {key:{} for key in covTypeVec}
-cov = {key:{} for key in covTypeVec}
+def error_mat(x, y):
+    diff = x - y
+    dist = torch.linalg.matrix_norm(diff, ord=2)
+    dist = torch.sqrt(dist)
+    return dist
 
-for n in range(len(nDimList)):
-    for c in range(len(covTypeVec)):
-        covType = covTypeVec[c]
-        nDim = nDimList[n]
-        gammaTrue[covType][n] = np.load(dataDir + f'gammaTrue_{covType}_n_{nDim}.npy')
-        gammaTaylor[covType][n] = np.load(dataDir + f'gammaTaylor_{covType}_n_{nDim}.npy')
-        psiTrue[covType][n] = np.load(dataDir + f'psiTrue_{covType}_n_{nDim}.npy')
-        psiTaylor[covType][n] = np.load(dataDir + f'psiTaylor_{covType}_n_{nDim}.npy')
-        mu[covType][n] = np.load(dataDir + f'mu_{covType}_n_{nDim}.npy')
-        cov[covType][n] = np.load(dataDir + f'cov_{covType}_n_{nDim}.npy')
+####################################
+# 1) SETUP: DIRECTORIES, PARAMS
+####################################
+DATA_DIR = '../results/model_outputs/02_nd_approximation/'
+SAVE_DIR = '../results/plots/02_nd_approximation_performance/'
+os.makedirs(SAVE_DIR, exist_ok=True)
 
-##############
-# 2) PLOT INDIVIDUAL EXAMPLES OF THE APPROXIMATIONS
-##############
+# PARAMETERS OF SIMULATIONS TO LOAD
+eigvals = 'uniform'
+eigvecs = 'random'
+n_dim_list = [3, 6, 12, 24, 48]
+
+####################################
+# 2) LOAD THE SIMULATION RESULTS
+####################################
+mean_x = []
+mean_y = []
+mean_y_taylor = []
+covariance_x = []
+covariance_y = []
+covariance_y_taylor = []
+mean_y_error = []
+covariance_y_error = []
+sigma_scale = []
+var_scale = []
+
+for n_dim in n_dim_list:
+    filename = DATA_DIR + f'results_eigvals_{eigvals}_eigvecs_{eigvecs}_n_{n_dim}.pt'
+    results = torch.load(filename, weights_only=True)
+    mean_x.append(
+      list_2_tensor(results['mean_x'])
+    )
+    covariance_x.append(
+      list_2_tensor(results['covariance_x'])
+    )
+    covariance_y_taylor.append(
+      list_2_tensor(results['covariance_y_taylor'])
+    )
+    mean_y_taylor.append(
+      list_2_tensor(results['mean_y_taylor'])
+    )
+    covariance_y.append(
+      list_2_tensor(results['covariance_y_true'])
+    )
+    mean_y.append(
+      list_2_tensor(results['mean_y_true'])
+    )
+    sigma_scale.append(
+      torch.as_tensor(results['sigma'])
+    )
+    var_scale.append(
+      sigma_scale[-1] ** 2 / n_dim
+    )
+    mean_y_error.append(
+      error_rel(mean_y[-1], mean_y_taylor[-1])
+    )
+    covariance_y_error.append(
+      error_rel(covariance_y[-1], covariance_y_taylor[-1])
+    )
+    # Compute errors
+    #covariance_y_error.append(
+    #  error_mat(covariance_y, covariance_y_taylor)
+    #)
+
+
+####################################
+# 3) PLOT INDIVIDUAL EXAMPLES OF THE APPROXIMATIONS
+####################################
 
 # Number of examples to plot for each parameter combination
-nExamples = 3
+n_examples = 5
 # samples to plot for illustration
-nSamples = 200
+n_points = 100
 
-for c in range(len(covTypeVec)):
+for n, n_dim in enumerate(n_dim_list):
+    sigma_scale_vec = sigma_scale[n]
 
-    for n in range(len(nDimList)):
-        # Parameters for this simulation
-        covType = covTypeVec[c]
-        nDim = nDimList[n]
+    for v, sigma in enumerate(sigma_scale_vec):
 
-        for v in range(len(varScaleVec)):
-            varScale = varScaleVec[v]
+        for e in range(n_examples):
 
-            for e in range(nExamples):
+            prnorm = pn.models.ProjNormal(
+              mean_x=mean_x[n][v,e],
+              covariance_x=covariance_x[n][v,e]
+            )
 
-                # Initialize the projected normal
-                prnorm = pn.ProjNorm(
-                    nDim=nDim, muInit=mu[covType][n][v,:,e],
-                    covInit=cov[covType][n][v,:,:,e], requires_grad=False)
-                # Sample from the projected normal
-                samples = prnorm.sample(nSamples=nSamples)
+            # Sample from the projected normal
+            with torch.no_grad():
+                samples = prnorm.sample(n_samples=n_points)
 
-                # Get moments to plot
-                gammaTruePlt = gammaTrue[covType][n][v,:,e]
-                gammaAppPlt = gammaTaylor[covType][n][v,:,e]
-                psiTruePlt = psiTrue[covType][n][v,:,:,e]
-                psiAppPlt = psiTaylor[covType][n][v,:,:,e]
-                # Get the approximation error
-                gammaErr = la.norm(gammaTruePlt - gammaAppPlt) / la.norm(gammaTruePlt) * 100
-                psiErr = la.norm(psiTruePlt - psiAppPlt) / la.norm(psiTruePlt) * 100
+            ### PLOT GAMMA (MEAN) VECTORS
+            plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
 
-                ### PLOT GAMMA (MEAN) VECTORS
-                plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
-                fig, ax = plt.subplots(figsize=(3.5, 3.5))
-                # Plot the samples
-                for i in range(100):
-                    plot_means(axes=ax, muList=[samples[i]], colorList=['black'],
-                               nameList=['_nolegend_'], alpha=0.2)
-                # Plot the true and approximated means
-                plot_means(axes=ax, muList=[gammaAppPlt, gammaTruePlt],
-                           colorList=['blue', 'red'],
-                           nameList=['Approximation', 'Empirical'], linewidth=2)
-                ax.legend(loc='upper center', ncol=2, bbox_to_anchor=(0.5, 1.18),
-                          fontsize='small')
-                # Print the approximation errors on the plot (on top of a white rectangle)
-                rect = plt.Rectangle((0.52, 0.9), 0.48, 0.09, fill=True, color='white',
-                                     alpha=1, transform=ax.transAxes, zorder=1000)
-                ax.add_patch(rect)
-                ax.text(0.75, 0.93,
-                    r'$\mathrm{Error}_{\gamma}$:' f' {gammaErr:.2f}%',
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax.transAxes, zorder=1001)
-                # Set the labels and save the plot
-                plt.tight_layout()
-                plt.ylabel('Value')
-                plt.xlabel('Dimension')
-                plt.ylim([-0.85, 0.85])
-                plt.savefig(plotDir + f'1_mean_approximation_nDim_{nDim}_{covType}_'\
-                    f'var{int(varScaleVec[v]*100)}_{e}.png', bbox_inches='tight')
-                plt.close()
+            fig, ax = plt.subplots(figsize=(3.5, 3.5))
+            # Plot the samples
+            for i in range(n_points):
+                plot_means(
+                  axes=ax, mean_list=[samples[i]], color_list=['black'],
+                  name_list=['_nolegend_'], alpha=0.2
+                )
+            # Plot the true and approximated means
+            plot_means(
+              axes=ax, mean_list=[mean_y_taylor[n][v,e], mean_y[n][v,e]],
+              color_list=['blue', 'red'], name_list=['Approximation', 'Empirical'],
+              linewidth=2
+            )
 
-                ### DRAW COVARIANCE MATRICES IMAGES
-                # Setup
-                plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
-                fig, ax = plt.subplots(1, 2, figsize=(6, 3))
-                cmap = plt.get_cmap('bwr')
-                # Format data, make labels list and find color scale bounds
-                labelList = [r'$\Psi_{T}$', r'$\Psi_{T} - \Psi$']
-                covList = [psiAppPlt, psiAppPlt - psiTruePlt]
-                minVal, maxVal = list_min_max(arrayList=covList)
-                cBounds = np.max(np.abs([minVal, maxVal])) * np.array([-1, 1])
-                # Draw the covariance matrices
-                draw_covariance_images(axes=ax, covList=covList, labelList=labelList,
-                                       sharedScale=True, cmap=cmap)
-                add_colorbar(ax=ax[-1], cBounds=cBounds, cmap=cmap, label='Value',
-                             fontsize=12, width=0.015, loc=0.997)
-                # Print the approximation errors on the plot (on top of a white rectangle)
-                rect = plt.Rectangle((0.52, 0.9), 0.48, 0.09, fill=True, color='white',
-                                     alpha=1, zorder=1000, transform=ax[-1].transAxes)
-                ax[-1].add_patch(rect)
-                ax[-1].text(0.75, 0.93,
-                    r'$\mathrm{Error}_{\Psi}$' f'={psiErr:.2f}%',
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax[-1].transAxes, zorder=1001)
-                # Save the plot
-                plt.tight_layout()
-                plt.savefig(plotDir + f'2_covariance_approximation_nDim_{nDim}_'\
-                    f'{covType}_' f'var{int(varScaleVec[v]*100)}.png', bbox_inches='tight')
-                plt.close()
+            ax.legend(
+              loc='upper center', ncol=2, bbox_to_anchor=(0.5, 1.18), fontsize='small'
+            )
+
+            # Print the approximation errors on the plot (on top of a white rectangle)
+            rect = plt.Rectangle(
+              (0.52, 0.9), 0.48, 0.09, fill=True, color='white', alpha=1,
+              transform=ax.transAxes, zorder=1000
+            )
+            ax.add_patch(rect)
+            ax.text(
+              0.75, 0.93, r'$\mathrm{Error}_{\gamma}$:' f' {mean_y_error[n][v,e]:.2f}%',
+              horizontalalignment='center', verticalalignment='center',
+              transform=ax.transAxes, zorder=1001
+            )
+
+            # Set the labels and save the plot
+            plt.tight_layout()
+            plt.ylabel('Value')
+            plt.xlabel('Dimension')
+            plt.ylim([-0.85, 0.85])
+            plt.savefig(SAVE_DIR + f'01_mean_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
+                f'sigma{sigma}_{e}.png', bbox_inches='tight')
+            plt.close()
 
 
-##############
-# 2) PLOT THE ERRORS AS A FUNCTION OF DIMENSION AND VARIANCE SCALE
-##############
+            ### DRAW COVARIANCE MATRICES IMAGES
 
-### COMPUTE THE ERROR STATISTICS
-gammaErrStats = {}
-psiErrStats = {}
-gammaErrRelStats = {}
-psiErrRelStats = {}
+            # Setup
+            plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
+            fig, ax = plt.subplots(1, 2, figsize=(6, 3))
+            cmap = plt.get_cmap('bwr')
 
-for c in range(len(covTypeVec)):
-    covType = covTypeVec[c]
-    gammaErr = []
-    psiErr = []
-    gammaErrRel = []
-    psiErrRel = []
-    for n in range(len(nDimList)):
-        # Get errors of approximation and put into lists
-        gammaErr.append(la.norm(gammaTrue[covType][n] - gammaTaylor[covType][n], axis=1))
-        psiErr.append(la.norm(psiTrue[covType][n] - psiTaylor[covType][n], axis=(1,2)))
-        gammaErrRel.append(gammaErr[-1] / la.norm(gammaTrue[covType][n], axis=1) * 100)
-        psiErrRel.append(psiErr[-1] / la.norm(psiTrue[covType][n], axis=(1,2)) * 100)
+            # Format data, make labels list and find color scale bounds
+            label_list = [r'$\Psi_{T}$', r'$\Psi_{T} - \Psi$']
+            cov_list = [
+              covariance_y[n][v,e], covariance_y[n][v,e] - covariance_y_taylor[n][v,e]
+            ]
 
-    # Turn into numpy arrays
-    gammaErr = np.transpose(np.array(gammaErr), (1,0,2))
-    psiErr = np.transpose(np.array(psiErr), (1,0,2))
-    gammaErrRel = np.transpose(np.array(gammaErrRel), (1,0,2))
-    psiErrRel = np.transpose(np.array(psiErrRel), (1,0,2))
+            # Get maximum absolute value of the covariance matrices
+            max_val = torch.max(torch.abs(torch.stack(cov_list))) * 1.1
+            min_val = -max_val
+            color_bounds = [min_val, max_val]
 
-    # Compute error statistics
-    gammaErrStats[covType] = error_stats(gammaErr)
-    psiErrStats[covType] = error_stats(psiErr)
-    gammaErrRelStats[covType] = error_stats(gammaErrRel)
-    psiErrRelStats[covType] = error_stats(psiErrRel)
+            # Draw the covariance matrices
+            draw_covariance_images(
+              axes=ax, cov_list=cov_list, label_list=label_list, cmap=cmap
+            )
+
+            add_colorbar(ax=ax[-1], color_bounds=color_bounds, cmap=cmap, label='Value',
+                         fontsize=12, width=0.015, loc=0.997)
+
+            # Print the approximation errors on the plot (on top of a white rectangle)
+            rect = plt.Rectangle(
+              (0.52, 0.9), 0.48, 0.09, fill=True, color='white',
+              alpha=1, zorder=1000, transform=ax[-1].transAxes
+            )
+            ax[-1].add_patch(rect)
+            ax[-1].text(
+              0.75, 0.93, r'$\mathrm{Error}_{\Psi}$' f'={covariance_y_error[n][v,e]:.2f}%',
+              horizontalalignment='center', verticalalignment='center',
+              transform=ax[-1].transAxes, zorder=1001
+            )
+
+            # Save the plot
+            plt.tight_layout()
+            plt.savefig(SAVE_DIR + f'02_covariance_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
+                f'sigma{sigma}_{e}.png', bbox_inches='tight')
+            plt.close()
 
 
-### PLOT ERROR VS DIMENSION 
+####################################
+# 4) PLOT THE ERRORS AS A FUNCTION OF DIMENSION AND VARIANCE SCALE
+####################################
 
-# Set the plotting parameters
+# Plot the mean error as a function of the variance scale
 plt.rcParams.update({'font.size': 14, 'font.family': 'Nimbus Sans'})
 
-# Put errors in list and make list with corresponding labels
-errType = [gammaErrStats, psiErrStats, gammaErrRelStats, psiErrRelStats]
-errName = ['Mean', 'Covariance', 'Mean_relative', 'Covariance_relative']
-errLabel = [r'$||\gamma - \gamma_T||$', r'$||\Sigma - \Sigma_T||$',
-            r'$\mathrm{Error}_{\gamma}$ (%)',
-            r'$\mathrm{Error}_{\Psi}$ (%)']
-typeColor = {'uncorrelated': 'turquoise', 'correlated': 'orange', 'symmetric': 'blueviolet'}
-covTypeCap = ['Uncorrelated', 'Correlated', 'Symmetric']
+mean_y_error = torch.stack(mean_y_error)
+covariance_y_error = torch.stack(covariance_y_error)
 
-for e in range(len(errType)):
-    for v in range(len(varScaleVec)):
-        fig, ax = plt.subplots(1, 1, figsize=(5.5, 4.5))
-        for c in range(len(covTypeVec)):
-            # Plot the different covariance types in same plot
-            covType = covTypeVec[c]
+error_stats_mean = {
+  'median': mean_y_error.median(dim=-1).values,
+  'q1': mean_y_error.quantile(0.25, dim=-1),
+  'q3': mean_y_error.quantile(0.75, dim=-1)
+}
+error_stats_cov = {
+  'median': covariance_y_error.median(dim=-1).values,
+  'q1': covariance_y_error.quantile(0.25, dim=-1),
+  'q3': covariance_y_error.quantile(0.75, dim=-1)
+}
 
-            # Make array with CI limits and with x axis values (with offset to avoid overlap)
-            yerr = torch.stack((errType[e][covType]['q1'][v], errType[e][covType]['q3'][v]))
-            xPlt = np.array(nDimList) * (1.1)**(c)
+error_stats = [error_stats_mean, error_stats_cov]
+error_name = ['Mean', 'Covariance']
+error_label = [r'$\mathrm{Error}_{\gamma}$ (%)', r'$\mathrm{Error}_{\Psi}$ (%)']
+colors = plt.cm.tab10(torch.arange(len(n_dim_list)).numpy())
 
-            # Plot the error
-            ax.errorbar(xPlt, errType[e][covType]['median'][v],
-                        yerr=yerr, fmt='o-', label=covTypeCap[c],
-                        color=typeColor[covType])
+for e, plt_stats in enumerate(error_stats):
+    fig, ax = plt.subplots(1, 1, figsize=(5.5, 4.5))
+    for n, n_dim in enumerate(n_dim_list):
+        x_plt = sigma_scale[n]
 
-        # Set the labels, legend and save the plot
+        # Plot median error with bars showing quartiles
+        yerr = torch.stack([plt_stats['q1'][n], plt_stats['q3'][n]], dim=0)
+        # Plot each n_val in its own color and label
+        ax.errorbar(x_plt,
+                    plt_stats['median'][n],
+                    yerr=yerr,
+                    fmt='o-',
+                    color=colors[n],
+                    label=f'n={n_dim}')
+
         if e==2 or e==3:
-            ax.set_ylim([0.01, 100])
-        ax.set_xlabel('Number of dimensions')
-        ax.set_ylabel(errLabel[e])
+            ax.set_ylim([0.001, 100])
+
+        ax.set_xlabel('Variance scale (s)')
+        ax.set_ylabel(error_label[e])
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.legend(loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.25),
                   fontsize='small')
-        plt.tight_layout()
-        plt.savefig(plotDir + f'3_{errName[e]}_vs_ndim_{varScaleVec[v]}.png',
-                    bbox_inches='tight')
-        plt.close()
-
+    plt.tight_layout()
+    plt.savefig(SAVE_DIR + f'03_{error_name[e]}_{eigvals}_{eigvecs}.png',
+                bbox_inches='tight')
+    plt.close()
 

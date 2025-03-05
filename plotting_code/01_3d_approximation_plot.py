@@ -1,209 +1,163 @@
-##################
-#
-# For the 3D case, we will test the approximation of the moments of a
-# projected normal distribution.
-#
-##################
-
-import torch
-import numpy as np
-import numpy.linalg as la
-import projected_normal as pn
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import pandas as pd
+"""
+Plot the taylor approximation to the moments of the 3D projected normal.
+"""
 import os
 import sys
-sys.path.append('../')
-from analysis_functions import *
-from plotting_functions import *
+import torch
+import numpy as np
+import projnormal as pn
+import matplotlib.pyplot as plt
 
-# Directories to save plots and load data
-plotDir = '../../plots/01_3d_approximation_performance/'
-os.makedirs(plotDir, exist_ok=True)
-dataDir = '../../results/01_3d_approximation/'
+from plotting_functions import plot_ellipses_grid, plot_scatter_grid, set_grid_limits, add_grid_labels
+
+# Extract the results
+def list_2_tensor(tensor_list):
+    return torch.stack([torch.stack(tensor_list[i]) for i in range(len(tensor_list))])
+
+def error_rel(x, y):
+    if x.dim()==3:
+        error = 2 * torch.norm(x - y, dim=2) \
+            / (torch.norm(x, dim=2) + torch.norm(y, dim=2))
+    elif x.dim()==4:
+        error = 2 * torch.norm(x - y, dim=(2,3)) \
+            / (torch.norm(x, dim=(2,3)) + torch.norm(y, dim=(2,3)))
+    return error * 100
+
+def error_mat(x, y):
+    diff = x - y
+    dist = torch.linalg.matrix_norm(diff, ord=2)
+    dist = torch.sqrt(dist)
+    return dist
+
+
+####################################
+# 1) SETUP: DIRECTORIES, PARAMS
+####################################
+DATA_DIR = '../results/model_outputs/01_3d_approximation/'
+SAVE_DIR = '../results/plots/01_3d_approximation_performance/'
+os.makedirs(SAVE_DIR, exist_ok=True)
 
 # PARAMETERS OF SIMULATIONS TO LOAD
-# Covariance types and variance scales
-covTypeVec = ['uncorrelated', 'correlated', 'symmetric']
-varScaleVec = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8]
+eigvals = 'exponential'
+eigvecs = 'random'
 
-##############
-# 1) LOAD THE SIMULATION RESULTS
-##############
+####################################
+# 2) LOAD THE SIMULATION RESULTS
+####################################
 
-# Dictionaries to load the results
-gammaTrue = {}
-gammaTaylor = {}
-psiTrue = {}
-psiTaylor = {}
-mu = {}
-cov = {}
+filename = DATA_DIR + f'results_eigvals_{eigvals}_eigvecs_{eigvecs}_n_3.pt'
+results = torch.load(filename, weights_only=True)
+n_dim = 3
 
-for c in range(len(covTypeVec)):
-    covType = covTypeVec[c]
-    gammaTrue[covType] = np.load(dataDir + f'gammaTrue_{covType}.npy')
-    gammaTaylor[covType] = np.load(dataDir + f'gammaTaylor_{covType}.npy')
-    psiTrue[covType] = np.load(dataDir + f'psiTrue_{covType}.npy')
-    psiTaylor[covType] = np.load(dataDir + f'psiTaylor_{covType}.npy')
-    mu[covType] = np.load(dataDir + f'mu_{covType}.npy')
-    cov[covType] = np.load(dataDir + f'cov_{covType}.npy')
-nDim = gammaTrue[covTypeVec[0]].shape[1]
+mean_x = list_2_tensor(results['mean_x'])
+covariance_x = list_2_tensor(results['covariance_x'])
+covariance_y_taylor = list_2_tensor(results['covariance_y_taylor'])
+mean_y_taylor = list_2_tensor(results['mean_y_taylor'])
+covariance_y = list_2_tensor(results['covariance_y_true'])
+mean_y = list_2_tensor(results['mean_y_true'])
+sigma_scale = torch.as_tensor(results['sigma'])
+var_scale_vec = sigma_scale ** 2 / n_dim
+
+# Compute errors
+mean_y_error = error_rel(mean_y, mean_y_taylor)
+covariance_y_error = error_rel(covariance_y, covariance_y_taylor)
+#covariance_y_error = error_mat(covariance_y, covariance_y_taylor)
 
 
-##############
-# 2) PLOT ELLIPSES SHOWING APPROXIMATIONS TO INDIVIDUAL EXAMPLES
-##############
-
+####################################
+# 3) PLOT ELLIPSES SHOWING APPROXIMATIONS TO INDIVIDUAL EXAMPLES
+####################################
 # Number of examples to plot for each parameter combination
-nExamples = 3
+n_examples = 5
 # samples to plot for illustration
-nSamples = 200
+n_points = 200
 
-for c in range(len(covTypeVec)):
-    covType = covTypeVec[c]
+for v in range(len(var_scale_vec)):
+    var_scale = var_scale_vec[v]
 
-    for v in range(len(varScaleVec)):
-        varScale = varScaleVec[v]
+    for e in range(n_examples):
+        # Initialize the projected normal
+        prnorm = pn.models.ProjNormal(
+          mean_x=mean_x[v][e],
+          covariance_x=covariance_x[v][e]
+        )
 
-        for e in range(nExamples):
-            # Initialize the projected normal
-            prnorm = pn.ProjNorm(nDim=nDim, muInit=mu[covType][v,:,e],
-                                 covInit=cov[covType][v,:,:,e],
-                                 requires_grad=False)
-            # Sample from the projected normal
-            samples = prnorm.sample(nSamples=nSamples)
+        # Sample from the projected normal
+        with torch.no_grad():
+            samples = prnorm.sample(n_samples=n_points)
 
-            # Get moments to plot
-            gammaTruePlt = gammaTrue[covType][v,:,e]
-            gammaAppPlt = gammaTaylor[covType][v,:,e]
-            psiTruePlt = psiTrue[covType][v,:,:,e]
-            psiAppPlt = psiTaylor[covType][v,:,:,e]
-            # Compute errors
-            gammaErr = la.norm(gammaTruePlt - gammaAppPlt) / la.norm(gammaTruePlt) * 100
-            psiErr = la.norm(psiTruePlt - psiAppPlt) / la.norm(psiTruePlt) * 100
+        # PLOT ELLIPSES
+        plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
+        fig, ax = plt.subplots(2, 2, figsize=(3.5, 3.5))
+        plot_ellipses_grid(
+          axes=ax, mean=torch.zeros(n_dim), cov=torch.eye(n_dim)/4,
+          color='dimgrey', plot_center=False
+        )
+        plot_scatter_grid(axes=ax, data=samples)
+        plot_ellipses_grid(
+          axes=ax, mean=mean_y_taylor[v][e], cov=covariance_y_taylor[v][e],
+          color='blue', plot_center=True, label='Approximation'
+        )
+        plot_ellipses_grid(
+          axes=ax, mean=mean_y[v][e], cov=covariance_y[v][e],
+          color='red', plot_center=True, label='True'
+        )
 
-            # PLOT ELLIPSES
-            plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
-            fig, ax = plt.subplots(2, 2, figsize=(3.5, 3.5))
-            plot_ellipses_grid(axes=ax, mu=torch.zeros(nDim), cov=torch.eye(nDim)/4,
-                               color='dimgrey', withCenter=False)
-            plot_scatter_grid(axes=ax, data=samples)
-            plot_ellipses_grid(axes=ax, mu=gammaAppPlt, cov=psiAppPlt, color='blue',
-                               withCenter=True, label='Approximation')
-            plot_ellipses_grid(axes=ax, mu=gammaTruePlt, cov=psiTruePlt, color='red',
-                               withCenter=True, label='Empirical')
-            handles, labels = ax[0,0].get_legend_handles_labels()
-            fig.legend(handles, labels, loc='upper center', ncol=2,
-                       bbox_to_anchor=(0.5, 1.11))
-            # Set limits
-            set_grid_limits(axes=ax, xlims=[-1.5, 1.5], ylims=[-1.5, 1.5])
-            add_grid_labels(axes=ax, prefix=r'$y$')
-            # Print error value in ax[0,1]
-            ax[0,1].text(0.5, 0.5, r'$\mathrm{Error}_{\gamma}$:' f' {gammaErr:.2f}%\n'
-                                   r'$\mathrm{Error}_{\Psi}$:' f' {psiErr:.2f}%',
-                          horizontalalignment='center', verticalalignment='center')
-            plt.tight_layout()
-            plt.savefig(plotDir + f'1_approximation_ellipses_var_{covType}_'\
-                f'var{int(varScale*100)}_{e}.png', bbox_inches='tight')
-            plt.close()
+        handles, labels = ax[0,0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', ncol=2,
+                   bbox_to_anchor=(0.5, 1.11))
 
-
-##############
-# 2) PLOT THE DISTRIBUTION OF THE APPROXIMATION ERRORS
-##############
-
-gammaErrStats = {}
-psiErrStats = {}
-gammaErrRelStats = {}
-psiErrRelStats = {}
-
-for c in range(len(covTypeVec)):
-    covType = covTypeVec[c]
-    # Get errors of approximation
-    gammaErr = la.norm(gammaTrue[covType] - gammaTaylor[covType], axis=1)
-    psiErr = la.norm(psiTrue[covType] - psiTaylor[covType], axis=(1,2))
-    gammaErrRel = gammaErr / la.norm(gammaTrue[covType], axis=1) * 100
-    psiErrRel = psiErr / la.norm(psiTrue[covType], axis=(1,2)) * 100
-
-    # Compute error statistics
-    gammaErrStats[covType] = error_stats(gammaErr)
-    psiErrStats[covType] = error_stats(psiErr)
-    gammaErrRelStats[covType] = error_stats(gammaErrRel)
-    psiErrRelStats[covType] = error_stats(psiErrRel)
-
-    # Plot the histrogram of the relative errors
-    plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
-    for j in range(2):
-        fig, ax = plt.subplots(2, len(varScaleVec), figsize=(16, 5))
-        if j==0:
-            gammaErrPlt = gammaErr
-            psiErrPlt = psiErr
-            title = 'Absolute'
-            labelEnd = ''
-        else:
-            gammaErrPlt = gammaErrRel
-            psiErrPlt = psiErrRel
-            title = 'Relative'
-            labelEnd = ' (%)'
-        for v in range(len(varScaleVec)):
-            # Make histograms show frequency, not counts
-            ax[0,v].hist(gammaErrPlt[v], bins=20, color='black')
-            ax[1,v].hist(psiErrPlt[v], bins=20, color='black')
-            ax[0,v].set_title(f'Variance scale: {varScaleVec[v]}')
-            ax[0,v].set_xlabel('Mean SE' + labelEnd)
-            ax[1,v].set_xlabel('Covariance SE' + labelEnd)
-            ax[0,v].set_ylabel('Count')
-            ax[1,v].set_ylabel('Count')
+        # Set limits
+        set_grid_limits(axes=ax, xlims=[-1.5, 1.5], ylims=[-1.5, 1.5])
+        add_grid_labels(axes=ax, prefix=r'$y$')
+        # Print error value in ax[0,1]
+        ax[0,1].text(0.5, 0.5, r'$\mathrm{Error}_{\gamma}$:' f' {mean_y_error[v,e]:.2f}%\n'
+                               r'$\mathrm{Error}_{\Psi}$:' f' {covariance_y_error[v,e]:.2f}%',
+                      horizontalalignment='center', verticalalignment='center')
         plt.tight_layout()
+        plt.savefig(SAVE_DIR + f'1_approximation_ellipses_var_{eigvals}_{eigvecs}'\
+            f'var{int(var_scale*100)}_{e}.png', bbox_inches='tight')
+        plt.close()
 
-            plt.savefig(plotDir + f'2_approximation_error_{covType}_{title}.png',
-                        bbox_inches='tight')
-            plt.close()
 
-
-##############
-# 3) PLOT THE MEAN ERROR AS A FUNCTION OF THE VARIANCE SCALE
-# (USE THE MEAN ERRORS COMPUTED IN THE PREVIOUS SECTION)
-##############
-
+####################################
+# 4) PLOT THE MEAN ERROR AS A FUNCTION OF THE VARIANCE SCALE
+####################################
 # Plot the mean error as a function of the variance scale
 plt.rcParams.update({'font.size': 14, 'font.family': 'Nimbus Sans'})
 
-errStats = [gammaErrStats, psiErrStats, gammaErrRelStats, psiErrRelStats]
-#errStats_E = [gammaErrStats_E, psiErrStats_E, gammaErrRelStats_E, psiErrRelStats_E]
-errName = ['Mean', 'Covariance', 'Mean_relative', 'Covariance_relative']
-errLabel = [r'$||\gamma - \gamma_T||$', r'$||\Psi - \Psi_T||$',
-            r'$\mathrm{Error}_{\gamma}$ (%)',
-            r'$\mathrm{Error}_{\Psi}$ (%)']
-typeColor = {'uncorrelated': 'turquoise', 'correlated': 'orange', 'symmetric': 'blueviolet'}
-covTypeCap = ['Uncorrelated', 'Correlated', 'Symmetric']
+error_stats_mean = {
+  'median': mean_y_error.median(dim=1).values,
+  'q1': mean_y_error.quantile(0.25, dim=1),
+  'q3': mean_y_error.quantile(0.75, dim=1)
+}
+error_stats_cov = {
+  'median': covariance_y_error.median(dim=1).values,
+  'q1': covariance_y_error.quantile(0.25, dim=1),
+  'q3': covariance_y_error.quantile(0.75, dim=1)
+}
 
-for e in range(len(errStats)):
+error_stats = [error_stats_mean, error_stats_cov]
+error_name = ['Mean', 'Covariance']
+error_label = [r'$\mathrm{Error}_{\gamma}$ (%)', r'$\mathrm{Error}_{\Psi}$ (%)']
+
+for e, plt_stats in enumerate(error_stats):
     fig, ax = plt.subplots(1, 1, figsize=(5.5, 4.5))
-    for c in range(len(covTypeVec)):
-        covType = covTypeVec[c]
-        # Plot median error with bars showing quartiles
-        yerr = torch.stack((errStats[e][covType]['q1'], errStats[e][covType]['q3']))
-        xPlt = torch.tensor(varScaleVec) * (1.1) **c
-        ax.errorbar(xPlt, errStats[e][covType]['median'],
-                    yerr=yerr, fmt='o-', label=covTypeCap[c], color=typeColor[covType])
-        # Plot empirical error
-        #ax.plot(varScaleVec, errStats_E[e][covType]['median'], 'o--')
+
+    # Plot median error with bars showing quartiles
+    yerr = torch.stack([plt_stats['q1'], plt_stats['q3']], dim=0)
+    x_plt = torch.tensor(var_scale_vec)
+    ax.errorbar(x_plt, plt_stats['median'], yerr=yerr, fmt='o-')
+
     if e==2 or e==3:
-        ax.set_ylim([0.01, 100])
+        ax.set_ylim([0.001, 100])
     ax.set_xlabel('Variance scale (s)')
-    ax.set_ylabel(errLabel[e])
+    ax.set_ylabel(error_label[e])
     ax.set_xscale('log')
     ax.set_yscale('log')
-    # Put legend on top left
-    #ax.legend(loc='upper left')
-    # Put legend on top of the plot, outside
     ax.legend(loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.25),
               fontsize='small')
     plt.tight_layout()
-    plt.savefig(plotDir + f'3_{errName[e]}_vs_var_scale.png',
+    plt.savefig(SAVE_DIR + f'3_{error_name[e]}_{eigvals}_{eigvecs}.png',
                 bbox_inches='tight')
     plt.close()
-
-

@@ -27,11 +27,11 @@ def plot_ellipse(mean, cov, ax, color='black', label=None, linestyle=None):
     if linestyle is None:
         linestyle='-'
     # Get eigenvalues and eigenvectors
-    eigVal, eigVec = torch.linalg.eigh(cov)
+    eigval, eigvec = torch.linalg.eigh(cov)
     # Get the angle of the ellipse
-    angle = torch.atan2(eigVec[1, 0], eigVec[0, 0])
+    angle = torch.atan2(eigvec[1, 0], eigvec[0, 0])
     # Get the length of the semi-axes
-    scale = torch.sqrt(eigVal)
+    scale = torch.sqrt(eigval)
     # Plot the ellipse
     ellipse = patches.Ellipse(xy=mean, width=scale[0]*4, height=scale[1]*4,
                               angle=angle*180/np.pi, color=color, linestyle=linestyle)
@@ -42,7 +42,7 @@ def plot_ellipse(mean, cov, ax, color='black', label=None, linestyle=None):
         ax.plot([], [], color=color, linestyle=linestyle, label=label)
 
 
-def plot_ellipses_grid(axes, mu, cov, color='black', withCenter=False, label=None,
+def plot_ellipses_grid(axes, mean, cov, color='black', plot_center=False, label=None,
                        linestyle=None):
     """
     For a variable wth more than 2 dimensions, plot a grid with the
@@ -53,33 +53,33 @@ def plot_ellipses_grid(axes, mu, cov, color='black', withCenter=False, label=Non
     ----------------
       - axes: List of axes handle on which to draw the values. Must
           be a 2D array of axes, with shape (n-1, n-1) where n is the
-          number of dimensions of mu.
-      - mu: Tensor with the mean of distribution. Shape (n)
+          number of dimensions of mean.
+      - mean: Tensor with the mean of distribution. Shape (n)
       - cov: Tensor with the covariance matrix of the distribution.
           Shape (n, n)
       - color: Color of the ellipse
-      - withCenter: If True, plot the center of the ellipse
+      - plot_center: If True, plot the center of the ellipse
       - label: Label for the ellipse
       - linestyle: Style of the ellipse
     """
     # Get number of plots
-    nAxes = axes.shape
+    n_axes = axes.shape
     # Iterate over the lower triangle of the covariance matrices
-    for r in range(nAxes[0]):
-        for c in range(nAxes[1]):
+    for r in range(n_axes[0]):
+        for c in range(n_axes[1]):
             # Check that there's an ax on which to plot
             if c <= r:
                 # Note, column goes first because ellipse takes (x, y)
-                muEllipse = torch.tensor([mu[c], mu[r+1]])
+                mean_ellipse = torch.tensor([mean[c], mean[r+1]])
                 # Get the covariance matrix for the 2D distribution
-                covEllipse = torch.tensor([[cov[c,c], cov[r+1, c]],
+                cov_ellipse = torch.tensor([[cov[c,c], cov[r+1, c]],
                                            [cov[c, r+1], cov[r+1, r+1]]])
                 # Plot the data
-                plot_ellipse(mean=muEllipse, cov=covEllipse, ax=axes[r, c],
+                plot_ellipse(mean=mean_ellipse, cov=cov_ellipse, ax=axes[r, c],
                              color=color, label=label, linestyle=linestyle)
                 axes[r,c].autoscale_view()
-                if withCenter:
-                    axes[r,c].scatter(mu[c], mu[r+1], color=color, s=20)
+                if plot_center:
+                    axes[r,c].scatter(mean[c], mean[r+1], color=color, s=20)
                 axes[r,c].set_xticks([]) # Remove ticks
                 axes[r,c].set_yticks([])
             else: # Remove redundant plots
@@ -100,11 +100,11 @@ def plot_scatter_grid(axes, data):
       - data: Array to plot. (samples, n)
     """
     # Get number of plots
-    nAxes = axes.shape
+    n_axes = axes.shape
     # Iterate over the lower triangle of the covariance matrices
-    for c in range(nAxes[1]):
+    for c in range(n_axes[1]):
         # Check that there's an ax on which to plot
-        for r in range(nAxes[0]):
+        for r in range(n_axes[0]):
             if c <= r:
                 # Extract the data
                 x = data[:,c]
@@ -127,10 +127,10 @@ def set_grid_limits(axes, xlims, ylims):
       - ylims: List with the limits of the y axis for the grid
     """
     # Get number of plots
-    nAxes = axes.shape
+    n_axes = axes.shape
     # Iterate over the lower triangle of the covariance matrices
-    for r in range(nAxes[0]):
-        for c in range(nAxes[1]):
+    for r in range(n_axes[0]):
+        for c in range(n_axes[1]):
             # Check that there's an ax on which to plot
             if c <= r:
                 # Set the limits of the axes
@@ -150,23 +150,23 @@ def add_grid_labels(axes, prefix=""):
       - prefix: Prefix to add to the labels
     """
     # Get number of plots
-    nAxes = axes.shape
+    n_axes = axes.shape
     # Iterate over the lower triangle of the covariance matrices
-    for r in range(nAxes[0]):
-        for c in range(nAxes[1]):
+    for r in range(n_axes[0]):
+        for c in range(n_axes[1]):
             # Check that there's an ax on which to plot
             if c <= r:
                 # Set the limits of the axes
                 if c == 0:
                     axes[r, c].set_ylabel(prefix + str(r+2))
-                if r == nAxes[0]-1:
+                if r == n_axes[0]-1:
                     axes[r, c].set_xlabel(prefix + str(c+1))
 
 
-def plot_3d_approximation_ellipses(axes, muList, covList, colorList=None,
-                                   nameList=None, styleList=None,
+def plot_3d_approximation_ellipses(axes, mean_list, cov_list, color_list=None,
+                                   name_list=None, styleList=None,
                                    limits=[-1.5, 1.5]):
-    """ 
+    """
     With the above script as template, this function plots several 3D ellipses
     in the same plot. A legend indicating the name of each ellipse is added
     above the grid
@@ -174,29 +174,33 @@ def plot_3d_approximation_ellipses(axes, muList, covList, colorList=None,
     Arguments:
     -----------------
       - ax: Axis handle on which to draw the ellipses.
-      - muList: List of tensors with the mean of the Gaussian distribution.
-      - covList: List of tensors with the covariance matrix of the Gaussian
-      - colorList: List of colors for the ellipses.
-      - nameList: List of names for the ellipses.
+      - mean_list: List of tensors with the mean of the Gaussian distribution.
+      - cov_list: List of tensors with the covariance matrix of the Gaussian
+      - color_list: List of colors for the ellipses.
+      - name_list: List of names for the ellipses.
     """
     # Get the number of ellipses to plot
-    nEllipses = len(muList)
+    nEllipses = len(mean_list)
     # If no color is provided, use a default color
-    if colorList is None:
-        colorList = ['black'] * nEllipses
+    if color_list is None:
+        color_list = ['black'] * nEllipses
     if styleList is None:
         styleList = [None] * nEllipses
     # If no name is provided, use a default name
-    if nameList is None:
-        nameList = ['' + str(i) for i in range(nEllipses)]
+    if name_list is None:
+        name_list = ['' + str(i) for i in range(nEllipses)]
     # Plot the ellipses
     for i in range(nEllipses):
-        plot_ellipses_grid(axes=axes, mu=muList[i], cov=covList[i],
-                           color=colorList[i], linestyle=styleList[i],
-                           label=nameList[i], withCenter=True)
-    nDim = len(muList[0])
-    plot_ellipses_grid(axes=axes, mu=torch.zeros(nDim), cov=torch.eye(nDim)/4,
-                       color='black', withCenter=False)
+        plot_ellipses_grid(axes=axes, mu=mean_list[i], cov=cov_list[i],
+                           color=color_list[i], linestyle=styleList[i],
+                           label=name_list[i], plot_center=True)
+    n_dim = len(mean_list[0])
+
+    plot_ellipses_grid(
+      axes=axes, mu=torch.zeros(n_dim), cov=torch.eye(n_dim)/4,
+      color='black', plot_center=False
+    )
+
     set_grid_limits(axes=axes, xlims=limits, ylims=limits)
     add_grid_labels(axes=axes, prefix='Y')
 
@@ -205,28 +209,27 @@ def plot_3d_approximation_ellipses(axes, muList, covList, colorList=None,
 ####### Plotting high D results
 #####################################
 
-def plot_means(axes, muList, colorList, nameList=None, styleList=None,
+def plot_means(axes, mean_list, color_list, name_list=None, styleList=None,
                linewidth=2, alpha=1):
     """ Plot the means in meanList as lines, with aesthetics and
-    labels given in colorList, styleList and nameList."""
-    if nameList is None:
-        nameList = ['_N'] * len(muList)
+    labels given in color_list, styleList and name_list."""
+    if name_list is None:
+        name_list = ['_N'] * len(mean_list)
     if styleList is None:
-        styleList = ['-'] * len(muList)
-    for i in range(len(muList)):
-        axes.plot(muList[i], color=colorList[i], linestyle=styleList[i],
-                  label=nameList[i], alpha=alpha, linewidth=linewidth)
+        styleList = ['-'] * len(mean_list)
+    for i in range(len(mean_list)):
+        axes.plot(mean_list[i], color=color_list[i], linestyle=styleList[i],
+                  label=name_list[i], alpha=alpha, linewidth=linewidth)
 
 
-def draw_covariance_images(axes, covList, labelList=None, sharedScale=False,
-                           cmap=plt.cm.viridis, symmetricScale=True):
+def draw_covariance_images(axes, cov_list, label_list=None, cmap=plt.cm.viridis):
     """
     Draw the covariance matrices as images.
     -----------------
     Arguments:
     -----------------
       - axes: Axis handle on which to draw the values.
-      - covList: List of length n containing arrays of 
+      - cov_list: List of length n containing arrays of 
           shape (c,c) 
       - xVal: List of x axis values for each element in covariances.
       - color: Color of the scatter plot.
@@ -234,36 +237,26 @@ def draw_covariance_images(axes, covList, labelList=None, sharedScale=False,
       - size: Size of the scatter plot points.
     """
     # Size of the covariance matrices
-    c = covList[0].shape[0]
-    n = len(covList) # Number of covariance matrices
-    # If sharedScale is True, we will use the same color scale for all images
-    if sharedScale:
-        covMin, covMax = list_min_max(covList)
-        cBounds = np.array([covMin, covMax])
+    c = cov_list[0].shape[0]
+    n = len(cov_list) # Number of covariance matrices
+
+    max_val = torch.max(torch.abs(torch.stack(cov_list))) * 1.1
+    min_val = -max_val
+    color_bounds = [min_val, max_val]
+
     for k in range(n):
         # Draw the covariance matrix as an image
-        if not sharedScale:
-            cBounds = [covariance[k].min(), covariance[k].max()]
-        if symmetricScale:
-            cBounds = np.max(np.abs(cBounds)) * np.array([-1, 1])
-        if labelList is not None:
-            titleStr = labelList[k] 
-        axes[k].imshow(covList[k], vmin=cBounds[0], vmax=cBounds[1],
+        if label_list is not None:
+            title_str = label_list[k]
+        axes[k].imshow(cov_list[k], vmin=color_bounds[0], vmax=color_bounds[1],
                             cmap=cmap)
-        axes[k].set_title(titleStr)
+        axes[k].set_title(title_str)
         # Remove ticks
         axes[k].set_xticks([])
         axes[k].set_yticks([])
 
 
-def list_min_max(arrayList):
-    """ Get the minimum and maximum values of a list of arrays."""
-    minVal = min([arr.min() for arr in arrayList])
-    maxVal = max([arr.max() for arr in arrayList])
-    return minVal, maxVal
-
-
-def add_colorbar(ax, cBounds, cmap=plt.cm.viridis, label='',
+def add_colorbar(ax, color_bounds, cmap=plt.cm.viridis, label='',
                  ticks=None, orientation='vertical', fontsize=22,
                  width=0.025, loc=0.95):
     """
@@ -273,7 +266,7 @@ def add_colorbar(ax, cBounds, cmap=plt.cm.viridis, label='',
     -----------------
       - ax: Axis handle on which to add colorbar.
       - cmap: Color map to use.
-      - cBounds: Min and max values to use for the color variable.
+      - color_bounds: Min and max values to use for the color variable.
           It can also be list of arrays of values, in which case the minimum
           and maximum values are used.
       - label: Label for the color bar.
@@ -282,11 +275,11 @@ def add_colorbar(ax, cBounds, cmap=plt.cm.viridis, label='',
     # Get color map
     if isinstance(cmap, str):
         cmap = plt.get_cmap(cmap)
-    if len(cBounds) > 2:
-        cBounds = [cBounds.min(), cBounds.max()]
+    if len(color_bounds) > 2:
+        color_bounds = [color_bounds.min(), color_bounds.max()]
     # Get fig from ax
     fig = ax.get_figure()
-    norm = mcolors.Normalize(vmin=cBounds[0], vmax=cBounds[1])
+    norm = mcolors.Normalize(vmin=color_bounds[0], vmax=color_bounds[1])
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     # Determine position of color bar based on orientation

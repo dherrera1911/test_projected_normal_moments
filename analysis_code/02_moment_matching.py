@@ -12,7 +12,7 @@ import itertools
 import torch
 import yaml
 import projnormal.distribution.general as png
-from projnormal.models import ProjectedNormal
+from projnormal.models import ProjNormal
 from projnormal import param_sampling
 
 # Set the data type
@@ -113,7 +113,7 @@ for n_dim, eigval, eigvec in itertools.product(
 
             # FIT TO DATA
             # Initialize the object
-            prnorm = ProjectedNormal(n_dim=n_dim)
+            prnorm = ProjNormal(n_dim=n_dim)
             # Initialize to guess parameters
             prnorm.moment_init(moments_empirical)
             # Fit 

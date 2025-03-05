@@ -12,7 +12,7 @@ import itertools
 
 import torch
 import yaml
-from projnormal.models import ProjectedNormal
+from projnormal.models import ProjNormal
 from projnormal import param_sampling
 
 # Load configuration file
@@ -86,7 +86,7 @@ for n_dim, eigval, eigvec in itertools.product(
             ) * var_scale
 
             # Initialize the projected normal
-            prnorm = ProjectedNormal(
+            prnorm = ProjNormal(
                 mean_x=results['mean_x'][v][r],
                 covariance_x=results['covariance_x'][v][r],
             )
