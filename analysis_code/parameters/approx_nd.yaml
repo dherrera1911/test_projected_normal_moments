@@ -1,3 +1,4 @@
+# Parameters to test moment approximation in different dimensions
 saving_dir:
   results_dir: '../results/model_outputs/02_nd_approximation/'
 

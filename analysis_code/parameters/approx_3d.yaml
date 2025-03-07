@@ -1,3 +1,4 @@
+# Parameters for testing the 3D moment approximation method
 saving_dir:
   results_dir: '../results/model_outputs/01_3d_approximation/'
 
