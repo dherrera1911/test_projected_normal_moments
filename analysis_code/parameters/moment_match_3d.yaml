@@ -1,3 +1,4 @@
+# Parameters to test moment matching in the 3D case
 saving_dir:
   results_dir: '../results/model_outputs/03_3d_moment_matching/'
 
