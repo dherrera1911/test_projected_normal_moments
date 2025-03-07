@@ -5,112 +5,134 @@ for each sample of the parameters. The results are saved in a dictionary
 and stored in a .pt file.
 """
 import argparse
-import os
 import sys
 import time
 import itertools
+import os
 
 import torch
 import yaml
+
 from projnormal.models import ProjNormal
 from projnormal import param_sampling
 
-# Load configuration file
-run_mode = 'script'
-#run_mode = 'interactive'
-if run_mode == 'interactive':
-    file_name = './parameters/par_approx_3d.yaml'
-    config = yaml.safe_load(open(file_name, 'r'))
-elif run_mode == 'script':
+
+config = yaml.safe_load(open('./parameters/approx_moment.yaml', 'r'))
+saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
+
+def main(dimension='3d'):
+
+    # Load parameters
+    EIGVAL_LIST = config['eigval_list']
+    EIGVEC_LIST = config['eigvec_list']
+    SIGMA_LIST = config['sigma_list']
+    EMPIRICAL_SAMPLES = config['empirical_samples']
+    N_SIMULATIONS = config['n_simulations']
+
+    if dimension=='3d':
+        N_DIM_LIST = [3]
+        SAVING_DIR = saving_dirs['approx_3d']
+    elif dimension=='nd':
+        N_DIM_LIST = config['n_dim_list']
+        SAVING_DIR = saving_dirs['approx_nd']
+
+    # Create saving directory
+    os.makedirs(SAVING_DIR, exist_ok=True)
+
+    ##############
+    # GET APPROXIMATION ERRORS
+    ##############
+
+    start = time.time()
+
+    for n_dim, eigval, eigvec in itertools.product(
+        N_DIM_LIST, EIGVAL_LIST, EIGVEC_LIST
+    ):
+
+        n_scales = len(SIGMA_LIST)
+
+        # Initialize dictionary with nested lists to save results
+        field_names = ['mean_y_true', 'mean_y_taylor',
+                       'covariance_y_true', 'covariance_y_taylor',
+                       'sm_y_true', 'sm_y_taylor',
+                       'mean_x', 'covariance_x']
+        results = {field: [[None for _ in range(N_SIMULATIONS)] for _ in range(n_scales)]
+                   for field in field_names}
+        results['sigma'] = SIGMA_LIST
+
+        for v, sigma_scale in enumerate(SIGMA_LIST):
+            # loop over variance scales
+            var_scale = sigma_scale**2 / torch.tensor(n_dim)
+
+            for r in range(N_SIMULATIONS):
+                progress_str = (
+                    f'cov_type: {eigval}, {eigvec} '
+                    f'n_dim: {n_dim}, sigma_scale: {sigma_scale}, rep: {r}'
+                )
+                print(progress_str)
+
+                # Get parameters
+                results['mean_x'][v][r] = param_sampling.make_mean(
+                  n_dim=n_dim, shape='gaussian'
+                )
+                results['covariance_x'][v][r] = param_sampling.make_spdm(
+                    n_dim=n_dim, eigvals=eigval, eigvecs=eigvec
+                ) * var_scale
+
+                # Initialize the projected normal
+                prnorm = ProjNormal(
+                    mean_x=results['mean_x'][v][r],
+                    covariance_x=results['covariance_x'][v][r],
+                )
+
+                # Get empirical moment estimates and unpack
+                with torch.no_grad():
+                    moments_empirical = prnorm.moments_empirical(
+                        n_samples=EMPIRICAL_SAMPLES
+                    )
+                results['mean_y_true'][v][r] = moments_empirical['mean']
+                results['covariance_y_true'][v][r] = moments_empirical['covariance']
+                results['sm_y_true'][v][r] = moments_empirical['second_moment']
+
+                # Get the Taylor approximation moments and unpack
+                with torch.no_grad():
+                    moments_taylor = prnorm.moments()
+                results['mean_y_taylor'][v][r] = moments_taylor['mean']
+                results['covariance_y_taylor'][v][r] = moments_taylor['covariance']
+                results['sm_y_taylor'][v][r] = moments_taylor['second_moment']
+
+        # Save results
+        torch.save(
+            results,
+            SAVING_DIR + f'results_eigvals_{eigval}_eigvecs_{eigvec}_n_{n_dim}.pt',
+        )
+
+    print(f'Time taken: {time.time() - start:.2f} seconds')
+
+
+if __name__ == "__main__":
+    # 1. Create an argument parser
     parser = argparse.ArgumentParser(
-        description='Run analysis with specified configuration file.'
+        description="Run analysis using either 3D or ND configurations."
     )
     parser.add_argument(
-        'config_path', type=str, help='Path to the configuration YAML file.'
+        "--dimension",
+        choices=["3d", "nd"],
+        help="Which version to run (3d or nd)."
     )
+
+    # 2. Parse arguments
     args = parser.parse_args()
-    # Load the YAML file
-    with open(args.config_path, 'r') as file:
-        config = yaml.safe_load(file)
 
-# Simulation parameters
-n_dim_list = config['simulation_parameters']['n_dim_list']
-eigval_list = config['simulation_parameters']['eigval_list']
-eigvec_list = config['simulation_parameters']['eigvec_list']
-sigma_list = config['simulation_parameters']['sigma_list']
-empirical_samples = config['simulation_parameters']['empirical_samples']
-n_simulations = config['simulation_parameters']['n_simulations']
+    # 3. If user is in an interactive session but hasn't supplied --dimension,
+    #    we can prompt them. If they are running a script with no dimension,
+    #    you can choose a sensible default (or also prompt).
+    if sys.stdin.isatty():
+        # Running in a TTY (e.g., normal terminal), so let's prompt if needed
+        dimension = args.dimension or input("Enter dimension (3d or nd): ").strip()
+    else:
+        # Non-interactive: no prompt. Could just default to "nd" or "3d".
+        dimension = args.dimension if args.dimension else "3d"
 
-# Create saving directory
-results_dir = config['saving_dir']['results_dir']
-os.makedirs(results_dir, exist_ok=True)
-
-##############
-# GET APPROXIMATION ERRORS
-##############
-
-start = time.time()
-
-for n_dim, eigval, eigvec in itertools.product(
-    n_dim_list, eigval_list, eigvec_list
-):
-
-    n_scales = len(sigma_list)
-
-    # Initialize dictionary with nested lists to save results
-    field_names = ['mean_y_true', 'mean_y_taylor',
-                   'covariance_y_true', 'covariance_y_taylor',
-                   'sm_y_true', 'sm_y_taylor',
-                   'mean_x', 'covariance_x']
-    results = {field: [[None for _ in range(n_simulations)] for _ in range(n_scales)]
-               for field in field_names}
-    results['sigma'] = sigma_list
-
-    for v, sigma_scale in enumerate(sigma_list):
-        # loop over variance scales
-        var_scale = sigma_scale**2 / torch.tensor(n_dim)
-
-        for r in range(n_simulations):
-            progress_str = (
-                f'cov_type: {eigval}, {eigvec} '
-                f'n_dim: {n_dim}, sigma_scale: {sigma_scale}, rep: {r}'
-            )
-            print(progress_str)
-
-            # Get parameters
-            results['mean_x'][v][r] = param_sampling.make_mean(
-              n_dim=n_dim, shape='gaussian'
-            )
-            results['covariance_x'][v][r] = param_sampling.make_spdm(
-                n_dim=n_dim, eigvals=eigval, eigvecs=eigvec
-            ) * var_scale
-
-            # Initialize the projected normal
-            prnorm = ProjNormal(
-                mean_x=results['mean_x'][v][r],
-                covariance_x=results['covariance_x'][v][r],
-            )
-
-            # Get empirical moment estimates and unpack
-            with torch.no_grad():
-                moments_empirical = prnorm.moments_empirical(
-                    n_samples=empirical_samples
-                )
-            results['mean_y_true'][v][r] = moments_empirical['mean']
-            results['covariance_y_true'][v][r] = moments_empirical['covariance']
-            results['sm_y_true'][v][r] = moments_empirical['second_moment']
-
-            # Get the Taylor approximation moments and unpack
-            with torch.no_grad():
-                moments_taylor = prnorm.moments()
-            results['mean_y_taylor'][v][r] = moments_taylor['mean']
-            results['covariance_y_taylor'][v][r] = moments_taylor['covariance']
-            results['sm_y_taylor'][v][r] = moments_taylor['second_moment']
-
-    # Save results
-    torch.save(
-        results,
-        results_dir + f'results_eigvals_{eigval}_eigvecs_{eigvec}_n_{n_dim}.pt',
-    )
-
-print(f'Time taken: {time.time() - start:.2f} seconds')
+    # 4. Run the main logic
+    main(dimension)
