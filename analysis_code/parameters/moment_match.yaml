@@ -1,6 +1,4 @@
-saving_dir:
-  results_dir: '../results/model_outputs/04_nd_moment_matching/'
-
+# Parameters to test moment matching in different dimensions
 simulation_parameters:
   # Number of dimensions
   n_dim_list: [3, 6, 12, 24, 48]
@@ -12,7 +10,7 @@ simulation_parameters:
   # number of samples for empirical estimates
   empirical_samples: 1000000
   # Number of simualted distributions to fit for each parameter combination
-  n_simulations: 40
+  n_simulations: 50
 
 fitting_parameters:
   # Number of iterations of each fitting cycle

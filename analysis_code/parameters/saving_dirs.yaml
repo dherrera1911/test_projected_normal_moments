@@ -1,0 +1,7 @@
+# File names for saving results of different analyses
+approx_3d: '../results/model_outputs/01_3d_approximation/'
+approx_nd: '../results/model_outputs/02_nd_approximation/'
+moment_match_3d: '../results/model_outputs/03_3d_moment_matching/'
+moment_match_nd: '../results/model_outputs/04_nd_moment_matching/'
+approx_const_3d: '../results/model_outputs/05_3d_approximation_const/'
+approx_const_nd: '../results/model_outputs/06_nd_approximation_const/'
