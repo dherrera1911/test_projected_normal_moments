@@ -59,7 +59,7 @@ SAVE_DIR = '../results/plots/04_nd_moment_matching/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # Choose your eigenvalue, eigenvector scenarios
-eigvals = 'uniform'
+eigvals = 'exponential'
 eigvecs = 'random'
 
 # List of dimensions to load
@@ -133,7 +133,7 @@ for n_dim in n_dim_list:
       torch.as_tensor(results['sigma'])
     )
     var_scale_vec.append(
-      sigma_scale[-1] ** 2 / n_dim
+      sigma_scale_vec[-1] ** 2 / n_dim
     )
     # Errors for parameters
     mean_x_error.append(error_rel(mean_x[-1], mean_x_fit[-1]))
