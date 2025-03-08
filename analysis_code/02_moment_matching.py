@@ -152,7 +152,7 @@ def main(dimension='3d'):
         # Save results
         torch.save(
             results,
-            results_dir + f'results_eigvals_{eigval}_eigvecs_{eigvec}_n_{n_dim}.pt',
+            SAVING_DIR + f'results_eigvals_{eigval}_eigvecs_{eigvec}_n_{n_dim}.pt',
         )
 
     print(f'Time taken: {time.time() - start:.2f} seconds')
