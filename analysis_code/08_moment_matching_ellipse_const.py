@@ -99,8 +99,8 @@ def main(dimension='3d'):
                     n_dim=n_dim, eigvals=eigval, eigvecs=eigvec
                 ) * var_scale
 
-                results['B_rad_sq'][v][r] = torch.rand(1) * 1.9 + 0.1
-                results['B_eigvals'][v][r] = -torch.log(torch.rand(N_DIRS))
+                results['B_rad_sq'][v][r] = torch.rand(1) * 1.5 + 0.5
+                results['B_eigvals'][v][r] = -torch.log(torch.rand(N_DIRS)) + 0.1
                 results['B_eigvecs'][v][r] = param_sampling.make_ortho_vectors(n_dim, N_DIRS)
                 results['B'][v][r] = make_B_matrix(
                   eigvals=results['B_eigvals'][v][r],
