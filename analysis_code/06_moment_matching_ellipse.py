@@ -79,7 +79,7 @@ def main(dimension='3d'):
 
         for v, sigma_scale in enumerate(SIGMA_LIST):
             # loop over variance scales
-            var_scale = sigma_scale**2
+            var_scale = sigma_scale**2 / torch.tensor(n_dim)
 
             r = 0
             while r < N_SIMULATIONS:
