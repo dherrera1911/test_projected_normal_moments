@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib import patches, colors, cm
 from matplotlib.cm import ScalarMappable
-import scipy
 
 
 #####################################
@@ -203,94 +202,3 @@ def plot_3d_approximation_ellipses(axes, mean_list, cov_list, color_list=None,
 
     set_grid_limits(axes=axes, xlims=limits, ylims=limits)
     add_grid_labels(axes=axes, prefix='Y')
-
-
-#####################################
-####### Plotting high D results
-#####################################
-
-def plot_means(axes, mean_list, color_list, name_list=None, styleList=None,
-               linewidth=2, alpha=1):
-    """ Plot the means in meanList as lines, with aesthetics and
-    labels given in color_list, styleList and name_list."""
-    if name_list is None:
-        name_list = ['_N'] * len(mean_list)
-    if styleList is None:
-        styleList = ['-'] * len(mean_list)
-    for i in range(len(mean_list)):
-        axes.plot(mean_list[i], color=color_list[i], linestyle=styleList[i],
-                  label=name_list[i], alpha=alpha, linewidth=linewidth)
-
-
-def draw_covariance_images(axes, cov_list, label_list=None, cmap=plt.cm.viridis):
-    """
-    Draw the covariance matrices as images.
-    -----------------
-    Arguments:
-    -----------------
-      - axes: Axis handle on which to draw the values.
-      - cov_list: List of length n containing arrays of 
-          shape (c,c) 
-      - xVal: List of x axis values for each element in covariances.
-      - color: Color of the scatter plot.
-      - label: Label for the scatter plot.
-      - size: Size of the scatter plot points.
-    """
-    # Size of the covariance matrices
-    c = cov_list[0].shape[0]
-    n = len(cov_list) # Number of covariance matrices
-
-    max_val = torch.max(torch.abs(torch.stack(cov_list))) * 1.1
-    min_val = -max_val
-    color_bounds = [min_val, max_val]
-
-    for k in range(n):
-        # Draw the covariance matrix as an image
-        if label_list is not None:
-            title_str = label_list[k]
-        axes[k].imshow(cov_list[k], vmin=color_bounds[0], vmax=color_bounds[1],
-                            cmap=cmap)
-        axes[k].set_title(title_str)
-        # Remove ticks
-        axes[k].set_xticks([])
-        axes[k].set_yticks([])
-
-
-def add_colorbar(ax, color_bounds, cmap=plt.cm.viridis, label='',
-                 ticks=None, orientation='vertical', fontsize=22,
-                 width=0.025, loc=0.95):
-    """
-    Add a color bar to the axes.
-    -----------------
-    Arguments:
-    -----------------
-      - ax: Axis handle on which to add colorbar.
-      - cmap: Color map to use.
-      - color_bounds: Min and max values to use for the color variable.
-          It can also be list of arrays of values, in which case the minimum
-          and maximum values are used.
-      - label: Label for the color bar.
-      - ticks: Specific tick marks to place on the color bar.
-    """
-    # Get color map
-    if isinstance(cmap, str):
-        cmap = plt.get_cmap(cmap)
-    if len(color_bounds) > 2:
-        color_bounds = [color_bounds.min(), color_bounds.max()]
-    # Get fig from ax
-    fig = ax.get_figure()
-    norm = mcolors.Normalize(vmin=color_bounds[0], vmax=color_bounds[1])
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    # Determine position of color bar based on orientation
-    # Modify these to change position
-    if orientation == 'horizontal':
-        cax_pos = [0.2, loc, 0.67, width]
-    else:  # vertical
-        cax_pos = [loc, 0.11, width, 0.8]  # Adjust as needed
-    cax = fig.add_axes(cax_pos)
-    cbar = fig.colorbar(sm, cax=cax, ticks=ticks, orientation=orientation)
-    cbar.ax.tick_params(labelsize=fontsize)
-    cbar.ax.set_title(label, loc='center', fontsize=fontsize, pad=10)
-    cbar.ax.yaxis.set_label_coords(7, 1)
-
