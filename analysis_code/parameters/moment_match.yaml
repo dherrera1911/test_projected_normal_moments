@@ -5,7 +5,7 @@ simulation_parameters:
   # variance scales to simulate
   sigma_list: [0.125, 0.25, 0.5, 1.0]
   # types of covariance structure to simulate
-  eigval_list: ['uniform']
+  eigval_list: ['exponential']
   eigvec_list: ['random']
   # number of samples for empirical estimates
   empirical_samples: 1000000
