@@ -10,12 +10,13 @@ import matplotlib.pyplot as plt
 from functions_plotting_stats import (
   plot_means,
   plot_samples,
-  draw_covariance_images,
-  add_colorbar
+  plot_covariances,
+  plot_error_stats,
 )
 from functions_results_processing import (
   list_2_tensor_results,
   error_rel,
+  error_cos,
   error_stats,
 )
 
@@ -41,10 +42,17 @@ for n_dim in n_dim_list:
     filename = DATA_DIR + f'results_eigvals_{eigvals}_eigvecs_{eigvecs}_n_{n_dim}.pt'
     results_n_dim = torch.load(filename, weights_only=True)
     results_n_dim = list_2_tensor_results(results_n_dim)
+
     results_n_dim['mean_y_error'] = error_rel(
       results_n_dim['mean_y_true'], results_n_dim['mean_y_taylor']
     )
     results_n_dim['covariance_y_error'] = error_rel(
+      results_n_dim['covariance_y_true'], results_n_dim['covariance_y_taylor']
+    )
+    results_n_dim['mean_y_cos'] = error_cos(
+      results_n_dim['mean_y_true'], results_n_dim['mean_y_taylor']
+    )
+    results_n_dim['covariance_y_cos'] = error_cos(
       results_n_dim['covariance_y_true'], results_n_dim['covariance_y_taylor']
     )
     results.append(results_n_dim)
@@ -76,7 +84,7 @@ for n, n_dim in enumerate(n_dim_list):
               prnorm=prnorm, n_samples=n_samples
             )
             plot_means(
-              results[n], plot_type='approx', ind=(v, e), ax=ax,
+              results[n], plot_type='approx', ind=(v, e), ax=ax, cos_sim=True,
             )
             plt.savefig(SAVE_DIR + f'01_mean_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
                 f'sigma{sigma}_{e}.pdf', bbox_inches='tight')
@@ -84,7 +92,7 @@ for n, n_dim in enumerate(n_dim_list):
 
             # PLOT THE APPROXIMATED AND TRUE COVARIANCE
             plot_covariances(
-              results[n], plot_type='approx', ind=(v, e)
+              results[n], plot_type='approx', ind=(v, e), cos_sim=True,
             )
             plt.savefig(SAVE_DIR + f'02_covariance_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
                 f'sigma{sigma}_{e}.pdf', bbox_inches='tight')
@@ -103,6 +111,16 @@ error_stats_mean = error_stats(
 error_stats_cov = error_stats(
     torch.stack(
       [result['covariance_y_error'] for result in results]
+    )
+)
+cos_stats_mean = error_stats(
+    torch.stack(
+      [result['mean_y_cos'] for result in results]
+    )
+)
+cos_stats_cov = error_stats(
+    torch.stack(
+      [result['covariance_y_cos'] for result in results]
     )
 )
 
@@ -126,3 +144,26 @@ plot_error_stats(
 plt.savefig(SAVE_DIR + f'03_psi_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
 
+# Plot gamma error
+plot_error_stats(
+  error_dict=cos_stats_mean,
+  error_label='Cosine similarity',
+  n_dim_list=n_dim_list,
+  sigma_vec=results[0]['sigma'],
+  ymax=1.0005,
+  logscale=False,
+)
+plt.savefig(SAVE_DIR + f'04_gamma_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.close()
+
+# Plot psi error
+plot_error_stats(
+  error_dict=cos_stats_cov,
+  error_label='Cosine similarity',
+  n_dim_list=n_dim_list,
+  sigma_vec=results[0]['sigma'],
+  ymax=1.0005,
+  logscale=False,
+)
+plt.savefig(SAVE_DIR + f'04_psi_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.close()

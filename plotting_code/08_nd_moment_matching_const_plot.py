@@ -18,6 +18,7 @@ from functions_plotting_stats import (
 from functions_results_processing import (
   list_2_tensor_results,
   error_rel,
+  error_cos,
   error_stats,
   remove_mean_component,
 )
@@ -34,7 +35,7 @@ SAVE_DIR = '../results/plots/08_nd_moment_matching_const/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # Choose your eigenvalue, eigenvector scenarios
-eigvals = 'uniform'
+eigvals = 'exponential'
 eigvecs = 'random'
 
 # List of dimensions to load
@@ -80,6 +81,13 @@ for n_dim in n_dim_list:
       results_n_dim['const'].squeeze(), results_n_dim['const_fit']
     )
 
+    results_n_dim['mean_x_cos'] = error_cos(
+      results_n_dim['mean_x'], results_n_dim['mean_x_fit']
+    )
+    results_n_dim['covariance_x_cos'] = error_cos(
+      results_n_dim['covariance_x'], results_n_dim['covariance_x_fit']
+    )
+
     results.append(results_n_dim)
 
 
@@ -98,7 +106,7 @@ for n, n_dim in enumerate(n_dim_list):
 
             # PLOT THE FITTED MEAN OF X
             plot_means(
-              results[n], plot_type='fit', ind=(v, e)
+              results[n], plot_type='fit', ind=(v, e), cos_sim=True,
             )
             filename = f'01_mu_fit_{n_dim}_{eigvals}_{eigvecs}_sigma_{sigma}_{e}.pdf'
             plt.savefig(SAVE_DIR + filename, bbox_inches='tight')
@@ -107,7 +115,7 @@ for n, n_dim in enumerate(n_dim_list):
 
             # PLOT THE FITTED COVARIANCE OF X
             plot_covariances(
-              results[n], plot_type='fit', ind=(v, e)
+              results[n], plot_type='fit', ind=(v, e), cos_sim=True,
             )
             filename = f'02_covariance_fit_{n_dim}_{eigvals}_{eigvecs}_sigma_{sigma}_{e}.pdf'
             plt.savefig(SAVE_DIR + filename, bbox_inches='tight')
@@ -115,12 +123,11 @@ for n, n_dim in enumerate(n_dim_list):
 
             # PLOT THE FITTED COVARIANCE OF X ORTHOGONAL
             plot_covariances(
-              results[n], plot_type='ort', ind=(v, e)
+              results[n], plot_type='ort', ind=(v, e), cos_sim=True,
             )
             filename = f'03_covariance_ort_fit_{n_dim}_{eigvals}_{eigvecs}_sigma_{sigma}_{e}.pdf'
             plt.savefig(SAVE_DIR + filename, bbox_inches='tight')
             plt.close()
-
 
 ####################################
 # 4) PLOT THE ERROR CURVES
@@ -151,11 +158,22 @@ cov_y_error_taylor = error_stats(
       [result['covariance_y_error'] for result in results]
     )
 )
+mean_x_cos = error_stats(
+    torch.stack(
+      [result['mean_x_cos'] for result in results]
+    )
+)
+cov_x_cos = error_stats(
+    torch.stack(
+      [result['covariance_x_cos'] for result in results]
+    )
+)
 const_error = error_stats(
     torch.stack(
       [result['const_error'] for result in results]
     )
 )
+
 
 # Plot mean_x error
 plot_error_stats(
@@ -190,6 +208,31 @@ plt.savefig(SAVE_DIR + f'04_const_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
 
 
+# Plot gamma error
+plot_error_stats(
+  error_dict=mean_x_cos,
+  error_label=r'Cosine similarity ($\mu$)',
+  n_dim_list=n_dim_list,
+  sigma_vec=results[0]['sigma'],
+  ymax=1.0005,
+  logscale=False,
+)
+plt.savefig(SAVE_DIR + f'05_cos_mu_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.close()
+
+# Plot psi error
+plot_error_stats(
+  error_dict=cov_x_cos,
+  error_label=r'Cosine similarity ($\Sigma$)',
+  n_dim_list=n_dim_list,
+  sigma_vec=results[0]['sigma'],
+  ymax=1.0005,
+  logscale=False,
+)
+plt.savefig(SAVE_DIR + f'05_cos_sigma_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.close()
+
+
 # Plot covariance_x orthogonal error
 plot_error_stats(
   error_dict=cov_x_error_ort,
@@ -197,7 +240,7 @@ plot_error_stats(
   n_dim_list=n_dim_list,
   sigma_vec=results[0]['sigma'],
 )
-plt.savefig(SAVE_DIR + f'05_sigma_ort_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.savefig(SAVE_DIR + f'06_sigma_ort_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
 
 # Plot covariance_x vs covariance_x orthogonal error
@@ -212,7 +255,7 @@ plot_error_scatters(
   ]
 )
 plt.plot([0, 100], [0, 100], 'k--', linewidth=3)
-plt.savefig(SAVE_DIR + f'06_scatter_ort_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.savefig(SAVE_DIR + f'07_scatter_ort_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
 
 # Plot error against approximation error
@@ -226,7 +269,7 @@ plot_error_scatters(
     r'$\mathrm{Error}_{\Sigma}$ (%)'
   ]
 )
-plt.savefig(SAVE_DIR + f'07_scatter_fit_vs_approx_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.savefig(SAVE_DIR + f'08_scatter_fit_vs_approx_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
 
 
@@ -255,6 +298,6 @@ plot_error_scatters(
     r'$\mathrm{Error}_{\Sigma}$ (%)'
   ]
 )
-plt.savefig(SAVE_DIR + f'08_scatter_const_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
+plt.savefig(SAVE_DIR + f'9_scatter_const_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
 

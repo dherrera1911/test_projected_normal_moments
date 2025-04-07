@@ -29,6 +29,24 @@ def error_rel(x, y):
     return error * 100
 
 
+def error_cos(x, y):
+    """
+    Get the relative error between two tensors as the
+    percentage of the mean of their norms.
+    """
+    if x.dim()==3:
+        cos = torch.nn.functional.cosine_similarity(
+          x, y, dim=-1
+        )
+    elif x.dim()==4:
+        x_vec = x.view(x.shape[0], x.shape[1], -1)
+        y_vec = y.view(y.shape[0], y.shape[1], -1)
+        cos = torch.nn.functional.cosine_similarity(
+          x_vec, y_vec, dim=-1
+        )
+    return cos
+
+
 def error_stats(error_tensor):
     error_stats_dict = {
       'median': error_tensor.median(dim=-1).values,

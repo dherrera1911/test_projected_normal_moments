@@ -8,13 +8,13 @@ from matplotlib.cm import ScalarMappable
 
 #### MAIN FUNCTIONS
 
-def plot_means(results, plot_type='approx', ind=None, ax=None):
+def plot_means(results, plot_type='approx', ind=None, ax=None, cos_sim=False):
     """
     Plot the mean obtained with approximation or fitting, and compare
     to the true value.
     """
     if ax is None:
-        fig, ax = plt.subplots(figsize=(3.5,3.5))
+        fig, ax = plt.subplots(figsize=(3.2,3.2))
 
     if ind is None:
         ind = torch.randint(0, results['covariance_x'].shape[0], (1,)).item()
@@ -23,41 +23,31 @@ def plot_means(results, plot_type='approx', ind=None, ax=None):
         mean1 = results['mean_y_true'][ind]
         mean2 = results['mean_y_taylor'][ind]
         names = ['True', 'Approx']
-        errorstr = r'$\mathrm{Error}_{\gamma}$:'
     elif plot_type == 'fit':
         mean1 = results['mean_x'][ind]
         mean2 = results['mean_x_fit'][ind]
         names = ['True', 'Fit']
-        errorstr = r'$\mathrm{Error}_{\mu}$:'
 
     n_dim = torch.as_tensor(mean1.shape[0])
-    mean_error = 2 * 100 * torch.norm(mean1 - mean2) \
-        / (torch.norm(mean1) + torch.norm(mean2))
 
     # Plot the true and approximated means
-    plot_lines(
-      axes=ax,
-      mean_list=[mean1, mean2],
-      color_list=['blue', 'red'],
-      name_list=names,
-      linewidth=3
-    )
+    plot_lines(axes=ax, mean_list=[mean1, mean2], color_list=['blue', 'red'],
+      name_list=names, linewidth=3)
 
     ax.legend(
-      loc='upper center', ncol=2, bbox_to_anchor=(0.5, 1.18), 
+      loc='upper center', ncol=2, bbox_to_anchor=(0.5, 1.25),
     )
 
     # Print the approximation errors on the plot (on top of a white rectangle)
-    rect = plt.Rectangle(
-      (0.52, 0.9), 0.48, 0.09, fill=True, color='white', alpha=1,
-      transform=ax.transAxes, zorder=1000
-    )
-    ax.add_patch(rect)
-    ax.text(
-      0.75, 0.93, errorstr + f' {mean_error:.2f}%',
-      horizontalalignment='center', verticalalignment='center',
-      transform=ax.transAxes, zorder=1001
-    )
+    norm_error = 2 * 100 * torch.norm(mean1 - mean2) \
+        / (torch.norm(mean1) + torch.norm(mean2))
+    add_text_box(ax, text=f'Error: {norm_error:.2f}%', line=0)
+
+    if cos_sim:
+        cos_sim = torch.nn.functional.cosine_similarity(mean1, mean2, dim=0)
+        add_text_box(
+          ax, text=f'cosine: {cos_sim:.3f}', line=1
+        )
 
     # Set the labels and save the plot
     plt.tight_layout()
@@ -70,7 +60,7 @@ def plot_means(results, plot_type='approx', ind=None, ax=None):
     return ax
 
 
-def plot_covariances(results, plot_type='fit', ind=None, ax=None):
+def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False):
     if ax is None:
         fig, ax = plt.subplots(1, 2, figsize=(6, 3))
     cmap = plt.get_cmap('bwr')
@@ -82,55 +72,53 @@ def plot_covariances(results, plot_type='fit', ind=None, ax=None):
         cov1 = results['covariance_y_true'][ind]
         cov2 = results['covariance_y_taylor'][ind]
         names = ['True', 'Approx']
-        errorstr = r'$\mathrm{Error}_{\Psi}$:'
 
     elif plot_type == 'fit':
         cov1 = results['covariance_x'][ind]
         cov2 = results['covariance_x_fit'][ind]
         names = ['True', 'Fit']
-        errorstr = r'$\mathrm{Error}_{\Sigma}$:'
 
     elif plot_type == 'ort':
         cov1 = results['covariance_x_ort'][ind]
         cov2 = results['covariance_x_fit_ort'][ind]
         names = ['True', 'Fit']
-        errorstr = r'$\mathrm{Error}_{\Sigma}$:'
 
     cov_list = [cov1, cov2]
-    cov_error = 2 * 100 * torch.norm(cov1 - cov2, dim=(-1,-2)) \
-            / (torch.norm(cov1, dim=(-1,-2)) + torch.norm(cov2, dim=(-1,-2)))
-
-    # Get maximum absolute value of the covariance matrices
-    max_val = torch.max(torch.abs(torch.stack(cov_list))) * 1.1
-    min_val = -max_val
-    color_bounds = [min_val, max_val]
 
     # Draw the covariance matrices
     draw_covariance_images(
       axes=ax, cov_list=cov_list, label_list=names, cmap=cmap
     )
 
+    # Add colorbar
+    max_val = torch.max(torch.abs(torch.stack(cov_list))) * 1.1
+    min_val = -max_val
+    color_bounds = [min_val, max_val]
+
     add_colorbar(
       ax=ax[-1], color_bounds=color_bounds, cmap=cmap, label='Value',
-      fontsize=12, width=0.015, loc=0.997
+      fontsize=12, width=0.018, loc=0.997
     )
 
-    rect = plt.Rectangle(
-      (0.52, 0.9), 0.48, 0.09, fill=True, color='white',
-      alpha=1, zorder=1000, transform=ax[-1].transAxes
-    )
-    ax[-1].add_patch(rect)
-    ax[-1].text(
-      0.75, 0.93, errorstr + f'={cov_error:.2f}%',
-      horizontalalignment='center', verticalalignment='center',
-      transform=ax[-1].transAxes, zorder=1001
-    )
+    # Calcualte errors
+    norm_error = 2 * 100 * torch.norm(cov1 - cov2, dim=(-1,-2)) \
+            / (torch.norm(cov1, dim=(-1,-2)) + torch.norm(cov2, dim=(-1,-2)))
+    add_text_box(ax[-1], text=f'Error: {norm_error:.2f}%', line=0)
+    if cos_sim:
+        cos_sim = torch.nn.functional.cosine_similarity(
+          cov1.view(-1), cov2.view(-1), dim=-1
+        )
+        add_text_box(
+          ax[-1], text=f'cosine: {cos_sim:.3f}', line=1
+        )
+
     plt.tight_layout()
 
     return ax
 
 
-def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec):
+def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec, ymin=None,
+                     ymax=110, logscale=True):
     """
     Plot the error statistics.
     """
@@ -142,7 +130,9 @@ def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec):
     jit = torch.linspace(0.9, 1.1, len(n_dim_list))
     for n, n_dim in enumerate(n_dim_list):
         # Plot median error with bars showing quartiles
-        yerr = torch.stack([error_dict['q1'][n], error_dict['q3'][n]], dim=0)
+        yerr = torch.stack([error_dict['q1'][n],
+                            error_dict['q3'][n]], dim=0)
+        yerr = torch.abs(yerr - error_dict['median'][n][None,:])
 
         ax.errorbar(
           torch.as_tensor(sigma_vec) * jit[n],
@@ -154,15 +144,21 @@ def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec):
           color=colors[n],
         )
 
-    min_val = torch.min(error_dict['q1']) * 0.1
+    if ymin is None:
+        min_val = torch.min(error_dict['q1'])
+        ylim = [min_val, ymax]
+    if logscale:
+        ylim[0] = ylim[0] * 0.1
 
     ax.set_xlabel('Variance scale (s)')
     ax.set_ylabel(error_label)
-    ax.set_yscale('log')
+    if logscale:
+        ax.set_yscale('log')
     ax.set_xscale('log')
-    ax.set_ylim([min_val, 110])
+    ax.set_ylim(ylim)
     ax.set_xticks(sigma_vec, sigma_vec)
-    ax.legend(loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.25))
+    ax.legend(loc='upper center', ncol=len(n_dim_list),
+              bbox_to_anchor=(0.5, 1.25), fontsize=12)
 
     plt.tight_layout()
     return ax
@@ -197,7 +193,8 @@ def plot_error_scatters(results, x_key, y_key, n_dim_list, labels=None):
     ax.set_ylabel(labels[1])
     ax.set_yscale('log')
     ax.set_xscale('log')
-    ax.legend(loc='upper center', ncol=len(n_dim_list), bbox_to_anchor=(0.5, 1.25))
+    ax.legend(loc='upper center', ncol=len(n_dim_list),
+              bbox_to_anchor=(0.5, 1.25), fontsize=12)
 
     plt.tight_layout()
     return ax
@@ -303,4 +300,25 @@ def add_colorbar(ax, color_bounds, cmap=plt.cm.viridis, label='',
     cbar.ax.tick_params(labelsize=fontsize)
     cbar.ax.set_title(label, loc='center', fontsize=fontsize, pad=10)
     cbar.ax.yaxis.set_label_coords(7, 1)
+
+
+def add_text_box(ax, text, line=0):
+    if line==0:
+        rect_loc = (0.43, 0.88)
+        text_loc = 0.93
+    elif line==1:
+        rect_loc = (0.43, 0.77)
+        text_loc = 0.82
+    # Print the approximation errors on the plot (on top of a white rectangle)
+    rect = plt.Rectangle(
+      rect_loc, 0.53, 0.11, fill=True, color='white', alpha=1,
+      transform=ax.transAxes, zorder=1000
+    )
+    ax.add_patch(rect)
+    ax.text(
+      0.69, text_loc, text,
+      horizontalalignment='center', verticalalignment='center',
+      transform=ax.transAxes, zorder=1001,
+      fontsize=14
+    )
 
