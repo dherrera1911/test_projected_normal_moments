@@ -13,16 +13,22 @@ import torch
 import yaml
 
 import projnormal.distribution.ellipse as pne
-from projnormal.models import ProjNormalEllipse
-from projnormal.ellipse_linalg import make_B_matrix
+from projnormal.models import ProjNormalEllipseIso
 from projnormal import param_sampling
+
+
+def make_B_matrix(B_coefs, B_vecs, B_diag):
+    term1 = torch.eye(B_vecs.shape[-1]) * B_diag
+    term2 = torch.einsum('ki,k,kj->ij', B_vecs, B_coefs, B_vecs)
+    return term1 + term2
+
 
 # Set the data type
 DTYPE = torch.float32
 
 config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
-N_DIRS = 2
+N_DIRS = 1
 
 
 def main(dimension='3d'):
@@ -30,8 +36,6 @@ def main(dimension='3d'):
     # Simulation parameters
     N_DIM_LIST = config['simulation_parameters']['n_dim_list']
     SIGMA_LIST = config['simulation_parameters']['sigma_list']
-    EIGVAL_LIST = config['simulation_parameters']['eigval_list']
-    EIGVEC_LIST = config['simulation_parameters']['eigvec_list']
     EMPIRICAL_SAMPLES = config['simulation_parameters']['empirical_samples']
     N_SIMULATIONS = config['simulation_parameters']['n_simulations']
 
@@ -58,9 +62,7 @@ def main(dimension='3d'):
     ##############
 
     start = time.time()
-    for n_dim, eigval, eigvec in itertools.product(
-        N_DIM_LIST, EIGVAL_LIST, EIGVEC_LIST
-    ):
+    for n_dim in N_DIM_LIST:
 
         n_scales = len(SIGMA_LIST)
 
@@ -69,9 +71,8 @@ def main(dimension='3d'):
                        'covariance_y_true', 'covariance_y_fit_taylor', 'covariance_y_fit_true',
                        'sm_y_true', 'sm_y_fit_taylor', 'sm_y_fit_true',
                        'mean_x', 'covariance_x', 'mean_x_fit', 'covariance_x_fit',
-                       'B_eigvals', 'B_eigvecs', 'B_rad_sq', 'B',
-                       'B_eigvals_fit', 'B_eigvecs_fit', 'B_rad_sq_fit', 'B_fit',
-                       'loss']
+                       'B_coefs', 'B_vecs', 'B_diag', 'B',
+                       'B_fit', 'loss']
 
         results = {field: [[None for _ in range(N_SIMULATIONS)] for _ in range(n_scales)]
                    for field in field_names}
@@ -84,7 +85,6 @@ def main(dimension='3d'):
             r = 0
             while r < N_SIMULATIONS:
                 progress_str = (
-                    f'cov_type: {eigval}, {eigvec} '
                     f'n_dim: {n_dim}, sigma_scale: {sigma_scale}, rep: {r}'
                 )
                 print(progress_str)
@@ -94,17 +94,15 @@ def main(dimension='3d'):
                 results['mean_x'][v][r] = param_sampling.make_mean(
                   n_dim=n_dim, shape='gaussian'
                 )
-                results['covariance_x'][v][r] = param_sampling.make_spdm(
-                    n_dim=n_dim, eigvals=eigval, eigvecs=eigvec
-                ) * var_scale
+                results['covariance_x'][v][r] = torch.eye(n_dim, dtype=DTYPE) * var_scale
 
-                results['B_rad_sq'][v][r] = torch.rand(1) * 1.5 + 0.5
-                results['B_eigvals'][v][r] = -torch.log(torch.rand(N_DIRS)) + 0.1
-                results['B_eigvecs'][v][r] = param_sampling.make_ortho_vectors(n_dim, N_DIRS)
+                results['B_diag'][v][r] = torch.as_tensor(1.0)
+                results['B_coefs'][v][r] = -torch.log(torch.rand(N_DIRS)) * 4 + 4.0
+                results['B_vecs'][v][r] = param_sampling.make_ortho_vectors(n_dim, N_DIRS)
                 results['B'][v][r] = make_B_matrix(
-                  eigvals=results['B_eigvals'][v][r],
-                  eigvecs=results['B_eigvecs'][v][r],
-                  rad_sq=results['B_rad_sq'][v][r]
+                  B_coefs=results['B_coefs'][v][r],
+                  B_vecs=results['B_vecs'][v][r],
+                  B_diag=results['B_diag'][v][r]
                 )
 
                 # Obtain moments and store
@@ -120,34 +118,40 @@ def main(dimension='3d'):
 
                 # FIT TO DATA
                 # Initialize the object
-                prnorm = ProjNormalEllipse(
-                  n_dim=n_dim,
-                  n_dirs=N_DIRS
-                )
-                # Initialize to guess parameters
-                prnorm.moment_init(moments_empirical)
+                converged = False
+                count = 0
+                while not converged:
+                    prnorm = ProjNormalEllipseIso(
+                      n_dim=n_dim,
+                      n_dirs=N_DIRS
+                    )
+                    # Initialize to guess parameters
+                    prnorm.moment_init(moments_empirical)
 
-                # Fit 
-                loss_dict = prnorm.moment_match(
-                  data_moments=moments_empirical,
-                  max_epochs=N_ITER,
-                  lr=LR,
-                  optimizer='NAdam',
-                  show_progress=False,
-                  return_loss=True,
-                  n_cycles=N_CYCLES,
-                  cycle_gamma=LR_GAMMA_CYCLE,
-                  gamma=LR_GAMMA,
-                  step_size=LR_DECAY_PERIOD,
-                )
+                    # Fit 
+                    loss_dict = prnorm.moment_match(
+                      data_moments=moments_empirical,
+                      max_epochs=N_ITER,
+                      lr=LR,
+                      optimizer='NAdam',
+                      show_progress=False,
+                      return_loss=True,
+                      n_cycles=N_CYCLES,
+                      cycle_gamma=LR_GAMMA_CYCLE,
+                      gamma=LR_GAMMA,
+                      step_size=LR_DECAY_PERIOD,
+                    )
+
+                    last_loss = loss_dict['loss'][-1]
+                    if last_loss < 1e-4 or count > 3:
+                        converged = True
+                    else:
+                        count += 1
 
                 with torch.no_grad():
                     # Fitted parameters
                     results['mean_x_fit'][v][r] = prnorm.mean_x
                     results['covariance_x_fit'][v][r] = prnorm.covariance_x.detach()
-                    results['B_rad_sq_fit'][v][r] = prnorm.ellipse.rad_sq
-                    results['B_eigvals_fit'][v][r] = prnorm.ellipse.eigvals
-                    results['B_eigvecs_fit'][v][r] = prnorm.ellipse.eigvecs
                     results['B_fit'][v][r] = prnorm.B
 
                     # Fitted taylor Y moments
@@ -175,7 +179,7 @@ def main(dimension='3d'):
         # Save results
         torch.save(
             results,
-            SAVING_DIR + f'results_eigvals_{eigval}_eigvecs_{eigvec}_n_{n_dim}.pt',
+            SAVING_DIR + f'results_n_{n_dim}.pt',
         )
 
     print(f'Time taken: {time.time() - start:.2f} seconds')
