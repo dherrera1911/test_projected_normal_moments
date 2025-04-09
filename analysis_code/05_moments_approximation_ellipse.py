@@ -13,14 +13,13 @@ import os
 import torch
 import yaml
 
-from projnormal.models import ProjNormalEllipse
+from projnormal.models import ProjNormalEllipseFixed
 from projnormal import param_sampling
 from projnormal.ellipse_linalg import make_B_matrix
 
 
 config = yaml.safe_load(open('./parameters/approx_moment.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
-N_DIRS = 2 # Number of independent ellipse directions
 
 def main(dimension='3d'):
 
@@ -57,8 +56,7 @@ def main(dimension='3d'):
         field_names = ['mean_y_true', 'mean_y_taylor',
                        'covariance_y_true', 'covariance_y_taylor',
                        'sm_y_true', 'sm_y_taylor',
-                       'mean_x', 'covariance_x',
-                       'B_eigvals', 'B_eigvecs', 'B_rad_sq', 'B']
+                       'mean_x', 'covariance_x', 'B']
         results = {field: [[None for _ in range(N_SIMULATIONS)] for _ in range(n_scales)]
                    for field in field_names}
         results['sigma'] = SIGMA_LIST
@@ -81,23 +79,15 @@ def main(dimension='3d'):
                 results['covariance_x'][v][r] = param_sampling.make_spdm(
                     n_dim=n_dim, eigvals=eigval, eigvecs=eigvec
                 ) * var_scale
-
-                results['B_rad_sq'][v][r] = torch.rand(1) * 1.5 + 0.5
-                results['B_eigvals'][v][r] = -torch.log(torch.rand(N_DIRS)) + 0.1
-                results['B_eigvecs'][v][r] = param_sampling.make_ortho_vectors(n_dim, N_DIRS)
-                results['B'][v][r] = make_B_matrix(
-                  eigvals=results['B_eigvals'][v][r],
-                  eigvecs=results['B_eigvecs'][v][r],
-                  rad_sq=results['B_rad_sq'][v][r]
+                results['B'][v][r] = param_sampling.make_spdm(
+                    n_dim=n_dim, eigvals='exponential', eigvecs='random',
                 )
 
                 # Initialize the projected normal
-                prnorm = ProjNormalEllipse(
+                prnorm = ProjNormalEllipseFixed(
                     mean_x=results['mean_x'][v][r],
                     covariance_x=results['covariance_x'][v][r],
-                    B_eigvals=results['B_eigvals'][v][r],
-                    B_eigvecs=results['B_eigvecs'][v][r],
-                    B_rad_sq=results['B_rad_sq'][v][r],
+                    B=results['B'][v][r],
                 )
 
                 # Get empirical moment estimates and unpack
