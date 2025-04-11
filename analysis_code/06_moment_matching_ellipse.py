@@ -127,21 +127,21 @@ def main(dimension='3d'):
                 # Initialize the object
                 converged = False
                 count = 0
+
+                _, vec_init = torch.linalg.eigh(moments_empirical['covariance'])
+                vec_init = vec_init[:, :N_DIRS].T
+
+                prnorm = ProjNormalEllipseIso(
+                  n_dim=n_dim,
+                  n_dirs=N_DIRS,
+                  B_sqrt_vecs=vec_init,
+                )
+                prnorm.to(dtype=DTYPE)
+
+                # Initialize to guess parameters
+                prnorm.moment_init(moments_empirical)
+
                 while not converged:
-
-                    _, vec_init = torch.linalg.eigh(moments_empirical['covariance'])
-                    vec_init = vec_init[:, :N_DIRS].T
-
-                    prnorm = ProjNormalEllipseIso(
-                      n_dim=n_dim,
-                      n_dirs=N_DIRS,
-                      B_sqrt_vecs=vec_init,
-                    )
-                    prnorm.to(dtype=DTYPE)
-
-                    # Initialize to guess parameters
-                    prnorm.moment_init(moments_empirical)
-
                     # Fit 
                     loss_dict = prnorm.moment_match(
                       data_moments=moments_empirical,
@@ -157,7 +157,7 @@ def main(dimension='3d'):
                     )
 
                     last_loss = loss_dict['loss'][-1]
-                    if last_loss < 1e-4 or count > 3:
+                    if last_loss < 1e-5 or count > 3:
                         converged = True
                     else:
                         count += 1
