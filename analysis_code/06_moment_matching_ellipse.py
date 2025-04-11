@@ -24,7 +24,7 @@ def make_B_matrix(B_coefs, B_vecs, B_diag):
 
 
 # Set the data type
-DTYPE = torch.float32
+DTYPE = torch.float64
 
 config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
@@ -93,17 +93,17 @@ def main(dimension='3d'):
                 # Sample parameters and store
                 results['mean_x'][v][r] = param_sampling.make_mean(
                   n_dim=n_dim, shape='gaussian'
-                )
+                ).to(dtype=DTYPE)
                 results['covariance_x'][v][r] = torch.eye(n_dim, dtype=DTYPE) * var_scale
 
                 results['B_diag'][v][r] = torch.as_tensor(1.0)
-                results['B_coefs'][v][r] = -torch.log(torch.rand(N_DIRS)) * 4 + 4.0
+                results['B_coefs'][v][r] = -torch.log(torch.rand(N_DIRS)) * 4 + 2.0
                 results['B_vecs'][v][r] = param_sampling.make_ortho_vectors(n_dim, N_DIRS)
                 results['B'][v][r] = make_B_matrix(
                   B_coefs=results['B_coefs'][v][r],
                   B_vecs=results['B_vecs'][v][r],
                   B_diag=results['B_diag'][v][r]
-                )
+                ).to(dtype=DTYPE)
 
                 # Obtain moments and store
                 moments_empirical = pne.sampling.empirical_moments(
@@ -116,15 +116,29 @@ def main(dimension='3d'):
                 results['covariance_y_true'][v][r] = moments_empirical['covariance']
                 results['sm_y_true'][v][r] = moments_empirical['second_moment']
 
+                moments_empirical['mean'] = torch.as_tensor(
+                  moments_empirical['mean'], dtype=DTYPE
+                )
+                moments_empirical['covariance'] = torch.as_tensor(
+                  moments_empirical['covariance'], dtype=DTYPE
+                )
+
                 # FIT TO DATA
                 # Initialize the object
                 converged = False
                 count = 0
                 while not converged:
+
+                    _, vec_init = torch.linalg.eigh(moments_empirical['covariance'])
+                    vec_init = vec_init[:, :N_DIRS].T
+
                     prnorm = ProjNormalEllipseIso(
                       n_dim=n_dim,
-                      n_dirs=N_DIRS
+                      n_dirs=N_DIRS,
+                      B_sqrt_vecs=vec_init,
                     )
+                    prnorm.to(dtype=DTYPE)
+
                     # Initialize to guess parameters
                     prnorm.moment_init(moments_empirical)
 
