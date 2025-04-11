@@ -23,7 +23,7 @@ DTYPE = torch.float32
 
 config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
-N_DIRS = 2
+N_DIRS = 1
 
 
 def main(dimension='3d'):
