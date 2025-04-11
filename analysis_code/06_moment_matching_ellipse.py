@@ -125,9 +125,6 @@ def main(dimension='3d'):
 
                 # FIT TO DATA
                 # Initialize the object
-                converged = False
-                count = 0
-
                 _, vec_init = torch.linalg.eigh(moments_empirical['covariance'])
                 vec_init = vec_init[:, :N_DIRS].T
 
@@ -141,6 +138,8 @@ def main(dimension='3d'):
                 # Initialize to guess parameters
                 prnorm.moment_init(moments_empirical)
 
+                converged = False
+                count = 0
                 while not converged:
                     # Fit 
                     loss_dict = prnorm.moment_match(
@@ -156,8 +155,17 @@ def main(dimension='3d'):
                       step_size=LR_DECAY_PERIOD,
                     )
 
+#                    fig, ax = plt.subplots(1, 2)
+#                    ax[0].imshow(prnorm.B.detach())
+#                    ax[1].imshow(results['B'][v][r])
+#                    plt.show()
+#
+#                    plt.plot(results['B_vecs'][v][r].detach().T)
+#                    plt.plot(prnorm.ellipse.sqrt_vecs.detach().T)
+#                    plt.show()
+
                     last_loss = loss_dict['loss'][-1]
-                    if last_loss < 1e-5 or count > 3:
+                    if last_loss < 5e-7 or count >= 4:
                         converged = True
                     else:
                         count += 1
