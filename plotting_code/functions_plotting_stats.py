@@ -60,10 +60,10 @@ def plot_means(results, plot_type='approx', ind=None, ax=None, cos_sim=False):
     return ax
 
 
-def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False):
+def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False, color_name='bwr'):
     if ax is None:
         fig, ax = plt.subplots(1, 2, figsize=(6, 3))
-    cmap = plt.get_cmap('bwr')
+    cmap = plt.get_cmap(color_name)
 
     if ind is None:
         ind = torch.randint(0, results['covariance_x'].shape[0], (1,)).item()
@@ -81,6 +81,11 @@ def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False)
     elif plot_type == 'ort':
         cov1 = results['covariance_x_ort'][ind]
         cov2 = results['covariance_x_fit_ort'][ind]
+        names = ['True', 'Fit']
+
+    elif plot_type == 'B':
+        cov1 = results['B'][ind]
+        cov2 = results['B_fit'][ind]
         names = ['True', 'Fit']
 
     cov_list = [cov1, cov2]
