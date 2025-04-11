@@ -14,14 +14,14 @@ simulation_parameters:
 
 fitting_parameters:
   # Number of iterations of each fitting cycle
-  n_iter: 200
+  n_iter: 80
   # Learning rate
   lr: 0.4
   # lr decay parameters
-  lr_decay_period: 10
+  lr_decay_period: 5
   lr_gamma: 0.85
   # lr decay each cycle start
-  n_cycles: 6
-  lr_gamma_cycle: 0.75
+  n_cycles: 16
+  lr_gamma_cycle: 0.85
   # Optimizer and loss function
   loss_type: 'mse'
