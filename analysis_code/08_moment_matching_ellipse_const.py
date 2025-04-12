@@ -63,7 +63,7 @@ def main(dimension='3d'):
     ##############
 
     start = time.time()
-    for n_dim in itertools.product(N_DIM_LIST):
+    for n_dim in N_DIM_LIST:
 
         n_scales = len(SIGMA_LIST)
 
