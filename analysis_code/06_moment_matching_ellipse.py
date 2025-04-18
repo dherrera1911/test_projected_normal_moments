@@ -22,9 +22,17 @@ def make_B_matrix(B_coefs, B_vecs, B_diag):
     term2 = torch.einsum('ki,k,kj->ij', B_vecs, B_coefs, B_vecs)
     return term1 + term2
 
+def mse_loss_weighted(momentsA, momentsB):
+    """ Compute the Euclidean distance between the observed and model moments. """
+    distance_means_sq = torch.sum((momentsA["mean"] - momentsB["mean"])**2)
+    distance_sm_sq = torch.sum(
+      (momentsA["covariance"]*100 - momentsB["covariance"]*100)**2
+    )
+    return distance_means_sq + distance_sm_sq
+
 
 # Set the data type
-DTYPE = torch.float64
+DTYPE = torch.float32
 
 config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
@@ -153,6 +161,7 @@ def main(dimension='3d'):
                       cycle_gamma=LR_GAMMA_CYCLE,
                       gamma=LR_GAMMA,
                       step_size=LR_DECAY_PERIOD,
+                      loss_fun=mse_loss_weighted,
                     )
 
 #                    fig, ax = plt.subplots(1, 2)
@@ -165,7 +174,7 @@ def main(dimension='3d'):
 #                    plt.show()
 
                     last_loss = loss_dict['loss'][-1]
-                    if last_loss < 5e-7 or count >= 4:
+                    if last_loss < 1e-7 or count >= 4:
                         converged = True
                     else:
                         count += 1
