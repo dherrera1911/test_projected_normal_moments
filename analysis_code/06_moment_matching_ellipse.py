@@ -47,6 +47,7 @@ def norm_loss_weighted(momentsA, momentsB):
 
 # Set the data type
 DTYPE = torch.float32
+LOSS = 'mse'
 
 config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
