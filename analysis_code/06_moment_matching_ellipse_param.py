@@ -28,7 +28,7 @@ def make_B_matrix(B_coefs, B_vecs, B_diag):
 
 def mse_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
-    distance_means_sq = torch.sum((momentsA["mean"] - momentsB["mean"])**2)
+    distance_means_sq = torch.sum((momentsA["mean"]*10 - momentsB["mean"]*10)**2)
     distance_sm_sq = torch.sum(
       (momentsA["covariance"]*100 - momentsB["covariance"]*100)**2
     )
@@ -38,12 +38,12 @@ def mse_loss_weighted(momentsA, momentsB):
 def norm_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
     distance_means_sq = torch.sqrt(
-        torch.sum((100*momentsA["mean"] - 100*momentsB["mean"])**2)
+        torch.sum((100*momentsA["mean"] - 100*momentsB["mean"])**2) + 1e-6
     )
     distance_sm_sq = torch.sqrt(
         torch.sum(
           (100*momentsA["covariance"]*100 - 100*momentsB["covariance"]*100)**2
-        )
+        ) + 1e-6
     )
     return distance_means_sq + distance_sm_sq
 
