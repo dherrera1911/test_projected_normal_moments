@@ -22,11 +22,25 @@ def make_B_matrix(B_coefs, B_vecs, B_diag):
     term2 = torch.einsum('ki,k,kj->ij', B_vecs, B_coefs, B_vecs)
     return term1 + term2
 
+
 def mse_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
     distance_means_sq = torch.sum((momentsA["mean"] - momentsB["mean"])**2)
     distance_sm_sq = torch.sum(
       (momentsA["covariance"]*100 - momentsB["covariance"]*100)**2
+    )
+    return distance_means_sq + distance_sm_sq
+
+
+def norm_loss_weighted(momentsA, momentsB):
+    """ Compute the Euclidean distance between the observed and model moments. """
+    distance_means_sq = torch.sqrt(
+        torch.sum((100*momentsA["mean"] - 100*momentsB["mean"])**2)
+    )
+    distance_sm_sq = torch.sqrt(
+        torch.sum(
+          (100*momentsA["covariance"]*100 - 100*momentsB["covariance"]*100)**2
+        )
     )
     return distance_means_sq + distance_sm_sq
 
@@ -64,6 +78,11 @@ def main(dimension='3d'):
 
     # Create saving directory
     os.makedirs(SAVING_DIR, exist_ok=True)
+
+    if LOSS == 'mse':
+        loss_fun = mse_loss_weighted
+    elif LOSS == 'norm':
+        loss_fun = norm_loss_weighted
 
     ##############
     # FIT THE PROJECTED NORMAL TO THE EMPIRICAL MOMENTS
@@ -161,7 +180,7 @@ def main(dimension='3d'):
                       cycle_gamma=LR_GAMMA_CYCLE,
                       gamma=LR_GAMMA,
                       step_size=LR_DECAY_PERIOD,
-                      loss_fun=mse_loss_weighted,
+                      loss_fun=loss_fun,
                     )
 
 #                    fig, ax = plt.subplots(1, 2)
@@ -210,7 +229,7 @@ def main(dimension='3d'):
         # Save results
         torch.save(
             results,
-            SAVING_DIR + f'results_n_{n_dim}.pt',
+            SAVING_DIR + f'results_{LOSS}_n_{n_dim}.pt',
         )
 
     print(f'Time taken: {time.time() - start:.2f} seconds')
