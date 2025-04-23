@@ -178,7 +178,7 @@ def main(dimension='3d'):
 #                    plt.show()
 
                     last_loss = loss_dict['loss'][-1]
-                    if last_loss < 1e-7 or count >= 4:
+                    if count >= 3:
                         converged = True
                     else:
                         count += 1
