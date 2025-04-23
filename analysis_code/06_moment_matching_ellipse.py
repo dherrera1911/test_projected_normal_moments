@@ -16,6 +16,7 @@ import projnormal.distribution.ellipse as pne
 from projnormal.models import ProjNormalEllipseIso
 from projnormal import param_sampling
 
+COV_MULT = 10
 
 def make_B_matrix(B_coefs, B_vecs, B_diag):
     term1 = torch.eye(B_vecs.shape[-1]) * B_diag
@@ -27,7 +28,7 @@ def mse_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
     distance_means_sq = torch.sum((momentsA["mean"]*10 - momentsB["mean"]*10)**2)
     distance_sm_sq = torch.sum(
-      (momentsA["covariance"]*100 - momentsB["covariance"]*100)**2
+      (momentsA["covariance"]*10*COV_MULT - momentsB["covariance"]*10*COV_MULT)**2
     )
     return distance_means_sq + distance_sm_sq
 
@@ -35,19 +36,16 @@ def mse_loss_weighted(momentsA, momentsB):
 def norm_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
     distance_means_sq = torch.sqrt(
-        torch.sum((100*momentsA["mean"] - 100*momentsB["mean"])**2) + 1e-6
+        torch.sum((10*momentsA["mean"] - 10*momentsB["mean"])**2) + 1e-6
     )
     distance_sm_sq = torch.sqrt(
-        torch.sum(
-          (100*momentsA["covariance"]*100 - 100*momentsB["covariance"]*100)**2
-        ) + 1e-6
+        torch.sum((100*momentsA["covariance"]*100 - 100*momentsB["covariance"]*100)**2) + 1e-6
     )
     return distance_means_sq + distance_sm_sq
 
 
 # Set the data type
 DTYPE = torch.float32
-LOSS = 'mse'
 
 config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
@@ -79,11 +77,6 @@ def main(dimension='3d'):
 
     # Create saving directory
     os.makedirs(SAVING_DIR, exist_ok=True)
-
-    if LOSS == 'mse':
-        loss_fun = mse_loss_weighted
-    elif LOSS == 'norm':
-        loss_fun = norm_loss_weighted
 
     ##############
     # FIT THE PROJECTED NORMAL TO THE EMPIRICAL MOMENTS
@@ -181,7 +174,7 @@ def main(dimension='3d'):
                       cycle_gamma=LR_GAMMA_CYCLE,
                       gamma=LR_GAMMA,
                       step_size=LR_DECAY_PERIOD,
-                      loss_fun=loss_fun,
+                      loss_fun=mse_loss_weighted,
                     )
 
 #                    fig, ax = plt.subplots(1, 2)
@@ -230,7 +223,7 @@ def main(dimension='3d'):
         # Save results
         torch.save(
             results,
-            SAVING_DIR + f'results_{LOSS}_n_{n_dim}.pt',
+            SAVING_DIR + f'results_n_{n_dim}_mult_{COV_MULT}.pt',
         )
 
     print(f'Time taken: {time.time() - start:.2f} seconds')
