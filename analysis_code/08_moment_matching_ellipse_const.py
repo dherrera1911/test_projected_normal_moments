@@ -18,6 +18,8 @@ from projnormal.ellipse_linalg import make_B_matrix
 from projnormal import param_sampling
 from projnormal import quadratic_forms as qf
 
+COV_MULT = 2
+
 def make_B_matrix(B_coefs, B_vecs, B_diag):
     term1 = torch.eye(B_vecs.shape[-1]) * B_diag
     term2 = torch.einsum('ki,k,kj->ij', B_vecs, B_coefs, B_vecs)
@@ -25,9 +27,9 @@ def make_B_matrix(B_coefs, B_vecs, B_diag):
 
 def mse_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
-    distance_means_sq = torch.sum((momentsA["mean"] - momentsB["mean"])**2)
+    distance_means_sq = torch.sum((momentsA["mean"]*10 - momentsB["mean"]*10)**2)
     distance_sm_sq = torch.sum(
-      (momentsA["covariance"]*100 - momentsB["covariance"]*100)**2
+      (momentsA["covariance"]*10*COV_MULT - momentsB["covariance"]*10*COV_MULT)**2
     )
     return distance_means_sq + distance_sm_sq
 
@@ -214,7 +216,7 @@ def main(dimension='3d'):
         # Save results
         torch.save(
             results,
-            SAVING_DIR + f'results_n_{n_dim}.pt',
+            SAVING_DIR + f'results_n_{n_dim}_mult_{COV_MULT}.pt',
         )
 
     print(f'Time taken: {time.time() - start:.2f} seconds')
