@@ -23,7 +23,7 @@ config = yaml.safe_load(open('./parameters/moment_match.yaml', 'r'))
 saving_dirs = yaml.safe_load(open('./parameters/saving_dirs.yaml', 'r'))
 
 
-def main(dimension='3d'):
+def main():
 
     # Simulation parameters
     N_DIM_LIST = config['simulation_parameters']['n_dim_list']
@@ -41,12 +41,8 @@ def main(dimension='3d'):
     LR_GAMMA_CYCLE = config['fitting_parameters']['lr_gamma_cycle']
     N_CYCLES = config['fitting_parameters']['n_cycles']
 
-    if dimension=='3d':
-        N_DIM_LIST = [3]
-        SAVING_DIR = saving_dirs['moment_match_3d']
-    elif dimension=='nd':
-        N_DIM_LIST = config['simulation_parameters']['n_dim_list']
-        SAVING_DIR = saving_dirs['moment_match_nd']
+    N_DIM_LIST = config['simulation_parameters']['n_dim_list']
+    SAVING_DIR = saving_dirs['moment_match_basic']
 
     # Create saving directory
     os.makedirs(SAVING_DIR, exist_ok=True)
@@ -159,28 +155,4 @@ def main(dimension='3d'):
 
 
 if __name__ == "__main__":
-    # 1. Create an argument parser
-    parser = argparse.ArgumentParser(
-        description="Run analysis using either 3D or ND configurations."
-    )
-    parser.add_argument(
-        "--dimension",
-        choices=["3d", "nd"],
-        help="Which version to run (3d or nd)."
-    )
-
-    # 2. Parse arguments
-    args = parser.parse_args()
-
-    # 3. If user is in an interactive session but hasn't supplied --dimension,
-    #    we can prompt them. If they are running a script with no dimension,
-    #    you can choose a sensible default (or also prompt).
-    if sys.stdin.isatty():
-        # Running in a TTY (e.g., normal terminal), so let's prompt if needed
-        dimension = args.dimension or input("Enter dimension (3d or nd): ").strip()
-    else:
-        # Non-interactive: no prompt. Could just default to "nd" or "3d".
-        dimension = args.dimension if args.dimension else "3d"
-
-    # 4. Run the main logic
-    main(dimension)
+    main()
