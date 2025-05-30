@@ -25,8 +25,8 @@ plt.rcParams.update({'font.size': 14, 'font.family': 'Nimbus Sans'})
 ####################################
 # 1) SETUP: DIRECTORIES, PARAMS
 ####################################
-DATA_DIR = '../results/model_outputs/02_nd_approximation/'
-SAVE_DIR = '../results/plots/02_nd_approximation_performance/'
+DATA_DIR = '../results/model_outputs/01_approximation/'
+SAVE_DIR = '../results/plots/01_approximation/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # PARAMETERS OF SIMULATIONS TO LOAD

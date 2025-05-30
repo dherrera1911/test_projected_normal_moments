@@ -30,8 +30,8 @@ plt.rcParams.update({'font.size': 14, 'font.family': 'Nimbus Sans'})
 ####################################
 # 1) SETUP: DIRECTORIES, PARAMS
 ####################################
-DATA_DIR = '../results/model_outputs/08_nd_moment_matching_const/'
-SAVE_DIR = '../results/plots/08_nd_moment_matching_const/'
+DATA_DIR = '../results/model_outputs/04_moment_matching_const/'
+SAVE_DIR = '../results/plots/04_moment_matching_const/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # Choose your eigenvalue, eigenvector scenarios
