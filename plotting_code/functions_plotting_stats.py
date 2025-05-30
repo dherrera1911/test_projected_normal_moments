@@ -50,7 +50,6 @@ def plot_means(results, plot_type='approx', ind=None, ax=None, cos_sim=False):
         )
 
     # Set the labels and save the plot
-    plt.tight_layout()
     plt.ylabel('Value')
     plt.xticks([0, n_dim-1], [1, int(n_dim)])
     # Set tick labels
@@ -77,6 +76,11 @@ def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False,
         cov1 = results['covariance_x'][ind]
         cov2 = results['covariance_x_fit'][ind]
         names = ['True', 'Fit']
+
+    elif plot_type == 'fit_approx':
+        cov1 = results['covariance_y_true'][ind]
+        cov2 = results['covariance_y_fit_taylor'][ind]
+        names = ['Target', 'Fit']
 
     elif plot_type == 'ort':
         cov1 = results['covariance_x_ort'][ind]
@@ -116,8 +120,6 @@ def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False,
         add_text_box(
           ax[-1], text=f'cosine: {cos_sim:.3f}', line=1
         )
-
-    plt.tight_layout()
 
     return ax
 
@@ -165,7 +167,6 @@ def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec, ymin=None,
     ax.legend(loc='upper center', ncol=len(n_dim_list),
               bbox_to_anchor=(0.5, 1.25), fontsize=12)
 
-    plt.tight_layout()
     return ax
 
 
@@ -201,7 +202,6 @@ def plot_error_scatters(results, x_key, y_key, n_dim_list, labels=None):
     ax.legend(loc='upper center', ncol=len(n_dim_list),
               bbox_to_anchor=(0.5, 1.25), fontsize=12)
 
-    plt.tight_layout()
     return ax
 
 
