@@ -16,6 +16,18 @@ import projnormal.distribution.general as png
 from projnormal.models import ProjNormal
 from projnormal import param_sampling
 
+
+COV_MULT = 2
+
+def mse_loss_weighted(momentsA, momentsB):
+    """ Compute the Euclidean distance between the observed and model moments. """
+    distance_means_sq = torch.sum((momentsA["mean"]*10 - momentsB["mean"]*10)**2)
+    distance_sm_sq = torch.sum(
+      (momentsA["covariance"]*10*COV_MULT - momentsB["covariance"]*10*COV_MULT)**2
+    )
+    return distance_means_sq + distance_sm_sq
+
+
 # Set the data type
 DTYPE = torch.float32
 
@@ -116,6 +128,7 @@ def main():
                   cycle_gamma=LR_GAMMA_CYCLE,
                   gamma=LR_GAMMA,
                   step_size=LR_DECAY_PERIOD,
+                  loss_fun=mse_loss_weighted,
                 )
 
                 with torch.no_grad():

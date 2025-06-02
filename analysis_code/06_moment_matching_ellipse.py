@@ -33,17 +33,6 @@ def mse_loss_weighted(momentsA, momentsB):
     return distance_means_sq + distance_sm_sq
 
 
-def norm_loss_weighted(momentsA, momentsB):
-    """ Compute the Euclidean distance between the observed and model moments. """
-    distance_means_sq = torch.sqrt(
-        torch.sum((10*momentsA["mean"] - 10*momentsB["mean"])**2) + 1e-6
-    )
-    distance_sm_sq = torch.sqrt(
-        torch.sum((100*momentsA["covariance"]*100 - 100*momentsB["covariance"]*100)**2) + 1e-6
-    )
-    return distance_means_sq + distance_sm_sq
-
-
 # Set the data type
 DTYPE = torch.float32
 
