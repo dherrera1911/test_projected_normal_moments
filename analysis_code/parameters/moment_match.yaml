@@ -8,7 +8,7 @@ simulation_parameters:
   eigval_list: ['exponential']
   eigvec_list: ['random']
   # number of samples for empirical estimates
-  empirical_samples: 10000000
+  empirical_samples: 2000000
   # Number of simualted distributions to fit for each parameter combination
   n_simulations: 50
 
@@ -21,7 +21,7 @@ fitting_parameters:
   lr_decay_period: 5
   lr_gamma: 0.85
   # lr decay each cycle start
-  n_cycles: 16
+  n_cycles: 12
   lr_gamma_cycle: 0.85
   # Optimizer and loss function
   loss_type: 'mse'
