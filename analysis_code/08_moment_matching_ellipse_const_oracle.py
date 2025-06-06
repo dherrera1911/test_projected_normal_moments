@@ -138,7 +138,7 @@ def main():
                 vec_init = vec_init[:, :N_DIRS].T
 
                 # Initialize the object
-                B_sqrt_coef = torch.sqrt(1 + results['B_coefs'][v][r])
+                B_sqrt_coef = torch.sqrt(1 + results['B_coefs'][v][r]) - 1
                 prnorm = ProjNormalEllipseConstIso(
                   n_dim=n_dim,
                   mean_x=results['mean_x'][v][r],
