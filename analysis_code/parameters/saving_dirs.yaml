@@ -1,6 +1,7 @@
 # File names for saving results of different analyses
 approx_basic: '../results/model_outputs/01_approximation/'
 moment_match_basic: '../results/model_outputs/02_moment_matching/'
+moment_match_basic_oracle: '../results/model_outputs/02_moment_matching_oracle/'
 approx_const: '../results/model_outputs/03_approximation_const/'
 moment_match_const: '../results/model_outputs/04_moment_matching_const/'
 approx_ellipse: '../results/model_outputs/05_approximation_ellipse/'

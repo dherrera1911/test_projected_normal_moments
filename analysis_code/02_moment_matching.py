@@ -17,7 +17,7 @@ from projnormal.models import ProjNormal
 from projnormal import param_sampling
 
 
-COV_MULT = 2
+COV_MULT = 10
 
 def mse_loss_weighted(momentsA, momentsB):
     """ Compute the Euclidean distance between the observed and model moments. """
