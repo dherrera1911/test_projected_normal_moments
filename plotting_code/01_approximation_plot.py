@@ -16,6 +16,7 @@ from functions_plotting_stats import (
 from functions_results_processing import (
   list_2_tensor_results,
   error_rel,
+  error_rel2,
   error_cos,
   error_stats,
 )
@@ -45,10 +46,10 @@ for n_dim in n_dim_list:
     results_n_dim = torch.load(filename, weights_only=True)
     results_n_dim = list_2_tensor_results(results_n_dim)
 
-    results_n_dim['mean_y_error'] = error_rel(
+    results_n_dim['mean_y_error'] = error_rel2(
       results_n_dim['mean_y_true'], results_n_dim['mean_y_taylor']
     )
-    results_n_dim['covariance_y_error'] = error_rel(
+    results_n_dim['covariance_y_error'] = error_rel2(
       results_n_dim['covariance_y_true'], results_n_dim['covariance_y_taylor']
     )
     results_n_dim['mean_y_cos'] = error_cos(
@@ -130,6 +131,7 @@ cos_stats_cov = error_stats(
 )
 
 
+ymin = 0.000001
 
 # Plot gamma error
 plot_error_stats(
@@ -137,6 +139,7 @@ plot_error_stats(
   error_label=r'$\mathrm{Error}_{\gamma}$ (%)',
   n_dim_list=n_dim_list,
   sigma_vec=results[0]['sigma'],
+  ymin=ymin,
 )
 plt.savefig(SAVE_DIR + f'03_gamma_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
@@ -147,9 +150,13 @@ plot_error_stats(
   error_label=r'$\mathrm{Error}_{\Psi}$ (%)',
   n_dim_list=n_dim_list,
   sigma_vec=results[0]['sigma'],
+  ymin=ymin,
 )
 plt.savefig(SAVE_DIR + f'03_psi_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
+
+ymin_cos = 0.9
+ymax_cos = 1.0005
 
 # Plot gamma error
 plot_error_stats(
@@ -157,7 +164,8 @@ plot_error_stats(
   error_label='Cosine similarity',
   n_dim_list=n_dim_list,
   sigma_vec=results[0]['sigma'],
-  ymax=1.001,
+  ymax=ymax_cos,
+  ymin=ymin_cos,
   logscale=False,
 )
 plt.savefig(SAVE_DIR + f'04_gamma_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
@@ -169,7 +177,8 @@ plot_error_stats(
   error_label='Cosine similarity',
   n_dim_list=n_dim_list,
   sigma_vec=results[0]['sigma'],
-  ymax=1.001,
+  ymax=ymax_cos,
+  ymin=ymin_cos,
   logscale=False,
 )
 plt.savefig(SAVE_DIR + f'04_psi_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib import patches, colors, cm
 from matplotlib.cm import ScalarMappable
+import matplotlib.ticker as mticker
 
 
 #### MAIN FUNCTIONS
@@ -23,15 +24,17 @@ def plot_means(results, plot_type='approx', ind=None, ax=None, cos_sim=False):
         mean1 = results['mean_y_true'][ind]
         mean2 = results['mean_y_taylor'][ind]
         names = ['True', 'Approx']
+        color_list = ['mediumblue', 'orangered']
     elif plot_type == 'fit':
         mean1 = results['mean_x'][ind]
         mean2 = results['mean_x_fit'][ind]
         names = ['True', 'Fit']
+        color_list = ['darkviolet', 'forestgreen']
 
     n_dim = torch.as_tensor(mean1.shape[0])
 
     # Plot the true and approximated means
-    plot_lines(axes=ax, mean_list=[mean1, mean2], color_list=['blue', 'red'],
+    plot_lines(axes=ax, mean_list=[mean1, mean2], color_list=color_list,
       name_list=names, linewidth=3)
 
     ax.legend(
@@ -39,9 +42,8 @@ def plot_means(results, plot_type='approx', ind=None, ax=None, cos_sim=False):
     )
 
     # Print the approximation errors on the plot (on top of a white rectangle)
-    norm_error = 2 * 100 * torch.norm(mean1 - mean2) \
-        / (torch.norm(mean1) + torch.norm(mean2))
-    add_text_box(ax, text=f'Error: {norm_error:.2f}%', line=0)
+    norm_error = 100 * torch.sum((mean1 - mean2)**2) / torch.sum(mean1**2)
+    add_text_box(ax, text=f'Error: {norm_error:.3f}%', line=0)
 
     if cos_sim:
         cos_sim = torch.nn.functional.cosine_similarity(mean1, mean2, dim=0)
@@ -110,9 +112,8 @@ def plot_covariances(results, plot_type='fit', ind=None, ax=None, cos_sim=False,
     )
 
     # Calcualte errors
-    norm_error = 2 * 100 * torch.norm(cov1 - cov2, dim=(-1,-2)) \
-            / (torch.norm(cov1, dim=(-1,-2)) + torch.norm(cov2, dim=(-1,-2)))
-    add_text_box(ax[-1], text=f'Error: {norm_error:.2f}%', line=0)
+    norm_error = 100 * torch.sum((cov1 - cov2)**2, dim=(-1,-2)) / torch.sum(cov1**2, dim=(-1,-2))
+    add_text_box(ax[-1], text=f'Error: {norm_error:.3f}%', line=0)
     if cos_sim:
         cos_sim = torch.nn.functional.cosine_similarity(
           cov1.view(-1), cov2.view(-1), dim=-1
@@ -131,19 +132,23 @@ def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec, ymin=None,
     """
     colors = plt.cm.viridis(torch.linspace(0, 1, len(n_dim_list)).numpy())
 
-    fig, ax = plt.subplots(1, 1, figsize=(6.5, 4.5))
+    fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.0))
 
     # Jitter factors
     jit = torch.linspace(0.9, 1.1, len(n_dim_list))
     for n, n_dim in enumerate(n_dim_list):
         # Plot median error with bars showing quartiles
+        y_med = error_dict['median'][n]
         yerr = torch.stack([error_dict['q1'][n],
                             error_dict['q3'][n]], dim=0)
-        yerr = torch.abs(yerr - error_dict['median'][n][None,:])
+        if ymin is not None:
+            y_med = torch.clamp(y_med, min=ymin)
+            yerr = torch.clamp(yerr, min=ymin)
+        yerr = torch.abs(yerr - y_med[None, :])
 
         ax.errorbar(
           torch.as_tensor(sigma_vec) * jit[n],
-          error_dict['median'][n],
+          y_med,
           yerr=yerr,
           label=f'$n={n_dim}$',
           fmt='o-',
@@ -154,7 +159,9 @@ def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec, ymin=None,
     if ymin is None:
         min_val = torch.min(error_dict['q1'])
         ylim = [min_val, ymax]
-    if logscale:
+    else:
+        ylim = [ymin, ymax]
+    if logscale and ymin is None:
         ylim[0] = ylim[0] * 0.1
 
     ax.set_xlabel('Variance scale (s)')
@@ -162,11 +169,12 @@ def plot_error_stats(error_dict, error_label, n_dim_list, sigma_vec, ymin=None,
     if logscale:
         ax.set_yscale('log')
     ax.set_xscale('log')
+    ax.xaxis.set_minor_locator(mticker.NullLocator())
     ax.set_ylim(ylim)
     ax.set_xticks(sigma_vec, sigma_vec)
     ax.legend(loc='upper center', ncol=len(n_dim_list),
               bbox_to_anchor=(0.5, 1.25), fontsize=12)
-
+    ax.yaxis.set_major_formatter(mticker.StrMethodFormatter("{x:g}"))
     return ax
 
 

@@ -29,6 +29,20 @@ def error_rel(x, y):
     return error * 100
 
 
+def error_rel2(x, y):
+    """
+    Get the relative error between two tensors as the
+    percentage of the mean of their norms.
+    """
+    if x.dim()==2:
+        error = 2 * (x - y)**2 / (x**2)
+    if x.dim()==3:
+        error = 2 * torch.sum((x - y)**2, dim=2) / torch.sum(x**2, dim=2)
+    elif x.dim()==4:
+        error = 2 * torch.sum((x - y)**2, dim=(-1,-2)) / torch.sum(x**2, dim=(-1,-2))
+    return error * 100
+
+
 def error_cos(x, y):
     """
     Get the relative error between two tensors as the

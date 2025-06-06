@@ -26,8 +26,8 @@ plt.rcParams.update({'font.size': 12, 'font.family': 'Nimbus Sans'})
 ####################################
 # 1) SETUP: DIRECTORIES, PARAMS
 ####################################
-DATA_DIR = '../results/model_outputs/03_approximation_const/'
-SAVE_DIR = '../results/plots/03_approximation_const/'
+DATA_DIR = '../results/model_outputs/05_approximation_ellipse/'
+SAVE_DIR = '../results/plots/05_approximation_ellipse/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # PARAMETERS OF SIMULATIONS TO LOAD
@@ -63,41 +63,41 @@ for n_dim in n_dim_list:
 # 3) PLOT INDIVIDUAL EXAMPLES OF THE APPROXIMATIONS
 ####################################
 
-# Number of examples to plot for each parameter combination
-n_examples = 3
-# samples to plot for illustration
-n_samples = 100
-
-for n, n_dim in enumerate(n_dim_list):
-    sigma_scale_vec = results[n]['sigma']
-
-    for v, sigma in enumerate(sigma_scale_vec):
-
-        for e in range(n_examples):
-
-            prnorm = pn.models.ProjNormalConst(
-              mean_x=results[n]['mean_x'][v,e],
-              covariance_x=results[n]['covariance_x'][v,e],
-              const=results[n]['const'][v,e],
-            )
-
-            ax = plot_samples(
-              prnorm=prnorm, n_samples=n_samples
-            )
-            plot_means(
-              results[n], plot_type='approx', ind=(v, e), ax=ax, cos_sim=True,
-            )
-            plt.savefig(SAVE_DIR + f'01_mean_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
-                f'sigma{sigma}_{e}.pdf', bbox_inches='tight')
-            plt.close()
-
-            # PLOT THE APPROXIMATED AND TRUE COVARIANCE
-            plot_covariances(
-              results[n], plot_type='approx', ind=(v, e), cos_sim=True,
-            )
-            plt.savefig(SAVE_DIR + f'02_covariance_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
-                f'sigma{sigma}_{e}.pdf', bbox_inches='tight')
-            plt.close()
+## Number of examples to plot for each parameter combination
+#n_examples = 3
+## samples to plot for illustration
+#n_samples = 100
+#
+#for n, n_dim in enumerate(n_dim_list):
+#    sigma_scale_vec = results[n]['sigma']
+#
+#    for v, sigma in enumerate(sigma_scale_vec):
+#
+#        for e in range(n_examples):
+#
+#            prnorm = pn.models.ProjNormalEllipseFixed(
+#              mean_x=results[n]['mean_x'][v,e],
+#              covariance_x=results[n]['covariance_x'][v,e],
+#              B=results[n]['B'][v,e],
+#            )
+#
+#            ax = plot_samples(
+#              prnorm=prnorm, n_samples=n_samples
+#            )
+#            plot_means(
+#              results[n], plot_type='approx', ind=(v, e), ax=ax, cos_sim=True,
+#            )
+#            plt.savefig(SAVE_DIR + f'01_mean_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
+#                f'sigma{sigma}_{e}.pdf', bbox_inches='tight')
+#            plt.close()
+#
+#            # PLOT THE APPROXIMATED AND TRUE COVARIANCE
+#            plot_covariances(
+#              results[n], plot_type='approx', ind=(v, e), cos_sim=True,
+#            )
+#            plt.savefig(SAVE_DIR + f'02_covariance_example_{eigvals}_{eigvecs}_dim_{n_dim}_'\
+#                f'sigma{sigma}_{e}.pdf', bbox_inches='tight')
+#            plt.close()
 
 
 ####################################
@@ -148,6 +148,7 @@ plot_error_stats(
 )
 plt.savefig(SAVE_DIR + f'03_psi_{eigvals}_{eigvecs}.pdf', bbox_inches='tight')
 plt.close()
+
 
 ymin_cos = 0.9
 ymax_cos = 1.0005
