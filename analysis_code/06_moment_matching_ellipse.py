@@ -13,7 +13,7 @@ import torch
 import yaml
 
 import projnormal.distribution.ellipse as pne
-from projnormal.models import ProjNormalEllipseIso
+from projnormal.models import ProjNormalEllipse, constraints
 from projnormal import param_sampling
 
 COV_MULT = 10
@@ -133,14 +133,16 @@ def main():
                 _, vec_init = torch.linalg.eigh(moments_empirical['covariance'])
                 vec_init = vec_init[:, :N_DIRS].T
 
-                prnorm = ProjNormalEllipseIso(
+                prnorm = ProjNormalEllipse(
                   n_dim=n_dim,
                   n_dirs=N_DIRS,
                   B_sqrt_vecs=vec_init,
                 )
                 prnorm.to(dtype=DTYPE)
+                # Constrain the covariance to be isotropic
+                prnorm.add_covariance_parametrization(constraints.Isotropic)
 
-                # Initialize to guess parameters
+                # Initialize parameters
                 prnorm.moment_init(moments_empirical)
 
                 converged = False
@@ -160,15 +162,6 @@ def main():
                       step_size=LR_DECAY_PERIOD,
                       loss_fun=mse_loss_weighted,
                     )
-
-#                    fig, ax = plt.subplots(1, 2)
-#                    ax[0].imshow(prnorm.B.detach())
-#                    ax[1].imshow(results['B'][v][r])
-#                    plt.show()
-#
-#                    plt.plot(results['B_vecs'][v][r].detach().T)
-#                    plt.plot(prnorm.ellipse.sqrt_vecs.detach().T)
-#                    plt.show()
 
                     last_loss = loss_dict['loss'][-1]
                     if last_loss < 1e-7 or count >= 4:
