@@ -10,3 +10,4 @@ moment_match_ellipse_param: '../results/model_outputs/06_moment_matching_ellipse
 approx_ellipse_const: '../results/model_outputs/07_approximation_ellipse_const/'
 moment_match_ellipse_const: '../results/model_outputs/08_moment_matching_ellipse_const/'
 moment_match_ellipse_const_oracle: '../results/model_outputs/08_moment_matching_ellipse_const_oracle/'
+mm_vs_ml: '../results/model_outputs/09_mm_vs_ml/'
